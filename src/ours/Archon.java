@@ -1,4 +1,4 @@
-package examplefuncsplayer;
+package ours;
 
 import java.util.Random;
 

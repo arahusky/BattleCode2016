@@ -1,10 +1,10 @@
-package examplefuncsplayer;
+package ours;
 
 import battlecode.common.RobotController;
 
-public class Guard extends BattlecodeRobot {
+public class Viper extends BattlecodeRobot {
 
-	public Guard(RobotController rc) {
+	public Viper(RobotController rc) {
 		this.rc = rc;
 	}
 

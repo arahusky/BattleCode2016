@@ -1,4 +1,4 @@
-package examplefuncsplayer;
+package ours;
 
 import battlecode.common.Clock;
 import battlecode.common.RobotController;
