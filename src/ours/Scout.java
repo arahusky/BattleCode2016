@@ -11,6 +11,7 @@ import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
+import battlecode.common.Signal;
 
 public class Scout extends BattlecodeRobot {
 
@@ -22,15 +23,17 @@ public class Scout extends BattlecodeRobot {
 			Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST };
 
 	private List<MapLocation> reportedDens = new ArrayList<>();
+	
+	private Direction mainDirection = Direction.NONE;
 
 	@Override
 	public void run() {
 
-		Direction mainDirection = getMainDirection();
-
 		while (true) {
+			
+			handleMessages();
+			
 			RobotInfo[] robots = rc.senseNearbyRobots();
-
 			try {
 				// Search for zombie den
 				for (RobotInfo robot : robots) {
@@ -69,19 +72,10 @@ public class Scout extends BattlecodeRobot {
 	}
 
 	/**
-	 * Evaluates starting direction for the current scout.
-	 * @return Random direction to start with.
-	 */
-	private Direction getMainDirection() {
-		// Using only rc.getID() for seed is not enough!
-		Random rnd = new Random((int) Math.pow(rc.getID(), 2));
-		int randomIndex = rnd.nextInt(directions.length);
-		return directions[randomIndex];
-	}
-
-	/**
 	 * Broadcast information about zombie den. Broadcasting to all archons.
-	 * @param loc Location of the zombie den.
+	 * 
+	 * @param loc
+	 *            Location of the zombie den.
 	 */
 	private void broadcastDenLocation(MapLocation loc) {
 		try {
@@ -100,6 +94,44 @@ public class Scout extends BattlecodeRobot {
 			ex.printStackTrace();
 		}
 
+	}
+
+	/**
+	 * Handles a message received by scout.
+	 */
+	private void handleMessages() {
+		// Get all signals
+		Signal[] signals = rc.emptySignalQueue();
+
+		for (Signal s : signals) {
+			int[] message = s.getMessage();
+			if (message == null) {
+				System.out.println("NULL MESSAGE");
+			} else {
+				int x = message[0];
+				int y = message[1];
+
+				if (x == ConfigUtils.MESSAGE_FOR_SCOUT) {
+					switch (y) {
+					case ConfigUtils.GO_NORTH_EAST:
+						mainDirection = Direction.NORTH_EAST;
+						break;
+					case ConfigUtils.GO_NORTH_WEST:
+						mainDirection = Direction.NORTH_WEST;
+						break;
+					case ConfigUtils.GO_SOUTH_EAST:
+						mainDirection = Direction.SOUTH_EAST;
+						break;
+					case ConfigUtils.GO_SOUTH_WEST:
+						mainDirection = Direction.SOUTH_WEST;
+						break;
+
+					default:
+						break;
+					}
+				}
+			}
+		}
 	}
 
 }
