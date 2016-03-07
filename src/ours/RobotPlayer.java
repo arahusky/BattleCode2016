@@ -26,11 +26,11 @@ public class RobotPlayer {
 		case SOLDIER:
 			robot = new Soldier(rc);
 			break;
-
-		/* TODO:
 		case SCOUT:
 			robot = new Scout(rc);
 			break;
+		
+		/* TODO:			
 		case GUARD:
 			robot = new Guard(rc);
 			break;
