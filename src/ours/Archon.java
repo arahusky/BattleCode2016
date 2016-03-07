@@ -5,12 +5,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-import com.sun.org.apache.bcel.internal.generic.GOTO_W;
-
 import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
-import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotType;
@@ -25,13 +22,19 @@ public class Archon extends BattlecodeRobot {
 	Direction[] directions = { Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST,
 			Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST };
 
-	private final int numberOfScouts = 4;
+	private final int numberOfScouts = 2;
 
 	private List<MapLocation> discoveredDens = new ArrayList<>();
 
 	@Override
 	public void run() {
+		
+		getDestination();
 
+	}
+
+	
+	private MapLocation getDestination() {
 		Random rand = new Random(rc.getID());
 		int scoutsCreated = 0;
 		boolean firstCreated = false;
@@ -113,8 +116,9 @@ public class Archon extends BattlecodeRobot {
 				e.printStackTrace();
 			}
 		}
+		return new MapLocation(0, 0);
 	}
-
+	
 	/**
 	 * Handles a message received by archon.
 	 */
