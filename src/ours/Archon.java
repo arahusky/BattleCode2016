@@ -5,13 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-import battlecode.common.Clock;
-import battlecode.common.Direction;
-import battlecode.common.GameActionException;
-import battlecode.common.MapLocation;
-import battlecode.common.RobotController;
-import battlecode.common.RobotType;
-import battlecode.common.Signal;
+import battlecode.common.*;
 
 public class Archon extends BattlecodeRobot {
 
@@ -29,10 +23,48 @@ public class Archon extends BattlecodeRobot {
 	@Override
 	public void run() {
 		
-		getDestination();
-
+		swarmToCorner(null);
 	}
 
+	private void swarmToCorner(MapLocation goToLocation) {
+		Direction movingDirection = Direction.NORTH_EAST;
+		if (rc.getTeam() == Team.B) {
+			movingDirection = Direction.SOUTH_WEST;
+		}
+		System.out.println(movingDirection);
+
+		// @TODO REMOVE WHEN DONE
+		if (goToLocation == null) {
+			goToLocation = rc.getLocation();
+			goToLocation = goToLocation.add(Direction.NONE, 0);
+		}
+
+		while(true) {
+			RobotInfo[] zombieEnemies = rc.senseNearbyRobots(rc.getType().attackRadiusSquared, Team.ZOMBIE);
+			RobotInfo[] normalEnemies = rc.senseNearbyRobots(rc.getType().attackRadiusSquared, rc.getTeam().opponent());
+			RobotInfo[] opponentEnemies = Utility.joinRobotInfo(zombieEnemies, normalEnemies);
+
+			try {
+				if (opponentEnemies.length > 0 && rc.getType().canAttack()) {
+					if (rc.isWeaponReady()) {
+						rc.attackLocation(opponentEnemies[0].location);
+					}
+				} else {
+					if (rc.isCoreReady()) {
+						if (goToLocation == null) {
+							Utility.forwardish(rc, movingDirection);
+						}
+						else {
+							System.out.println("going to location");
+							Utility.goToLocation(rc, goToLocation);
+						}
+					}
+				}
+			} catch (GameActionException e) {
+				e.printStackTrace();
+			}
+		}
+	}
 	
 	private MapLocation getDestination() {
 		Random rand = new Random(rc.getID());
@@ -116,7 +148,7 @@ public class Archon extends BattlecodeRobot {
 				e.printStackTrace();
 			}
 		}
-		return new MapLocation(0, 0);
+//		return new MapLocation(0, 0);
 	}
 	
 	/**
