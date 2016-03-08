@@ -58,8 +58,7 @@ public class Utility {
 		int x = goToLocation.x - myPos.x;
 		int y = goToLocation.y - myPos.y;
 
-		Direction goToDirection = Direction.NONE;
-
+		Direction goToDirection;
 		if (x < 0 && y < 0) goToDirection = Direction.NORTH_WEST;
 		else if (x > 0 && y < 0) goToDirection = Direction.NORTH_EAST;
 		else if (x < 0 && y > 0) goToDirection = Direction.SOUTH_WEST;
@@ -68,7 +67,7 @@ public class Utility {
 		else if (x > 0) goToDirection = Direction.EAST;
 		else if (y < 0) goToDirection = Direction.NORTH;
 		else if (y > 0) goToDirection = Direction.SOUTH;
-		else System.out.println("YOU ARE AN IDIOT");
+		else goToDirection = Direction.NONE;
 
 //		rc.setIndicatorString(0, "mypos " + myPos);
 //		rc.setIndicatorString(1, "goto " + goToLocation);
