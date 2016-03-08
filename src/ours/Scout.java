@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import javax.security.auth.login.Configuration;
+
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
@@ -30,6 +32,9 @@ public class Scout extends BattlecodeRobot {
 	private Direction subDirection1 = Direction.NONE;
 	private Direction subDirection2 = Direction.NONE;
 
+	private boolean atCorner = false;
+	private boolean cornerSwapped = false;
+
 	@Override
 	public void run() {
 
@@ -39,49 +44,79 @@ public class Scout extends BattlecodeRobot {
 
 			RobotInfo[] robots = rc.senseNearbyRobots();
 			try {
-				// Not reporting zombie dens
-				/**
-				 * for (RobotInfo robot : robots) { if (robot.type ==
-				 * RobotType.ZOMBIEDEN) {
-				 * 
-				 * if (!reportedLocations.contains(robot.location)) {
-				 * broadcastLocation(robot.location);
-				 * reportedLocations.add(robot.location); } } } /
-				 **/
+				// Report zombie den
+				for (RobotInfo robot : robots) {
+					if (robot.type == RobotType.ZOMBIEDEN) {
+
+						if (!reportedLocations.contains(robot.location)) {
+							broadcastLocation(robot.location, ConfigUtils.REPORTING_DEN_LOCATION);
+							reportedLocations.add(robot.location);
+						}
+					}
+				}
 
 				if (Archon.checkIfCornered(rc)) {
 					MapLocation loc = rc.getLocation();
 					if (!reportedLocations.contains(loc)) {
-						broadcastLocation(loc);
+						broadcastLocation(loc, ConfigUtils.REPORTING_CORNER_LOCATION);
 						reportedLocations.add(loc);
 					}
+					atCorner = true;
 				}
 
-				if (rc.isCoreReady()) {
-					if (tryToGoToDirection(mainDirection)) {
-						continue;
-					}
-					if (tryToGoToDirection(subDirection1)) {
-						continue;
-					}
-					if (tryToGoToDirection(subDirection2)) {
-						continue;
-					}
-					for (Direction dir : directions) {
-						if (tryToGoToDirection(dir)) {
-							break;
-						} else {
-							MapLocation loc = rc.getLocation().add(dir);
-							if (rc.senseRubble(loc) > GameConstants.RUBBLE_OBSTRUCTION_THRESH) {
-								rc.clearRubble(dir);
-								break;
-							}
-						}
-					}
+				if (atCorner && !cornerSwapped) {
+					swapCorner();
 				}
+
+				goToCorner();
+
 			} catch (GameActionException e) {
 				System.out.println(e.getMessage());
 				e.printStackTrace();
+			}
+		}
+	}
+
+	private void swapCorner() {
+		switch (mainDirection) {
+		case NORTH_EAST:
+			mainDirection = Direction.SOUTH_WEST;
+			break;
+		case NORTH_WEST:
+			mainDirection = Direction.SOUTH_EAST;
+			break;
+		case SOUTH_EAST:
+			mainDirection = Direction.NORTH_WEST;
+			break;
+		case SOUTH_WEST:
+			mainDirection = Direction.NORTH_EAST;
+			break;
+		}
+
+		cornerSwapped = true;
+	}
+
+	private void goToCorner() throws GameActionException {
+		if (rc.isCoreReady()) {
+			if (tryToGoToDirection(mainDirection)) {
+				return;
+			}
+			if (tryToGoToDirection(subDirection1)) {
+				return;
+			}
+			if (tryToGoToDirection(subDirection2)) {
+				return;
+			}
+			for (Direction dir : directions) {
+				if (tryToGoToDirection(dir)) {
+					break;
+				} else {
+					MapLocation loc = rc.getLocation().add(dir);
+					if (rc.senseRubble(loc) > GameConstants.RUBBLE_OBSTRUCTION_THRESH) {
+						rc.clearRubble(dir);
+						break;
+					}
+				}
 			}
 		}
 	}
@@ -104,7 +139,7 @@ public class Scout extends BattlecodeRobot {
 	/*
 	 * Broadcast the specified location.
 	 */
-	private void broadcastLocation(MapLocation loc) {
+	private void broadcastLocation(MapLocation loc, int broadcastType) {
 		try {
 			MapLocation[] archonLocations = rc.getInitialArchonLocations(rc.getTeam());
 			int maxDistance = Integer.MIN_VALUE;
@@ -115,8 +150,7 @@ public class Scout extends BattlecodeRobot {
 					maxDistance = distance;
 				}
 			}
-			rc.broadcastMessageSignal(loc.x, loc.y, maxDistance);
-			System.out.println("Rep: " + loc.x + "," + loc.y);
+			rc.broadcastMessageSignal(broadcastType, ConfigUtils.encodeLocation(loc), maxDistance);
 		} catch (GameActionException ex) {
 			System.out.println(ex.getMessage());
 			ex.printStackTrace();

@@ -25,11 +25,12 @@ public class Archon extends BattlecodeRobot {
 
 	private static final int NUMBER_OF_SCOUTS = 2; // For each archon
 
-	private List<MapLocation> interestingLocations = new ArrayList<>();
-	
-	private static final MapLocation ALREADY_IN_CORNER = new MapLocation(-1, -1); 
+	private List<MapLocation> corners = new ArrayList<>(); // Discovered corners
+	private List<MapLocation> dens = new ArrayList<>(); // Discovered dens
+
+	private static final MapLocation ALREADY_IN_CORNER = new MapLocation(-1, -1);
 	private static final MapLocation UNDEFINED_LOCATION = new MapLocation(-42, -42);
-	
+
 	/*
 	 * Maximum number of rounds (=time) for finding the location where to go.
 	 */
@@ -42,15 +43,13 @@ public class Archon extends BattlecodeRobot {
 
 		// TODO: goToDestination( ... )
 		// TODO: barricade()
-
 	}
 
 	/**
 	 * Creates a few scouts and tries to find a zombie den or corner of the map.
 	 * 
-	 * @return The position where to go and make barricades.
-	 * If result is (-1,-1), then we are in the corner.
-	 * If 
+	 * @return The position where to go and make barricades. If result is
+	 *         (-1,-1), then we are in the corner. If
 	 */
 	private MapLocation getDestination() {
 		Random rand = new Random(rc.getID());
@@ -74,26 +73,32 @@ public class Archon extends BattlecodeRobot {
 		while (true) {
 
 			if (rc.getRoundNum() > MAX_ROUNDS) {
+				if (!corners.isEmpty()) {
+					return corners.get(0);
+				}
+				if (!dens.isEmpty()) {
+					return dens.get(0);
+				}
 				return UNDEFINED_LOCATION;
 			}
-			
-			handleMessage();
-			
+
+			handleMessages();
+
 			try {
 				RobotType typeToBuild = RobotType.SCOUT;
 				if (NUMBER_OF_SCOUTS <= scoutsCreated && NUMBER_OF_SCOUTS <= broadcasted) {
-					if (interestingLocations.size() >= NUMBER_OF_SCOUTS) {
+					if (corners.size() >= NUMBER_OF_SCOUTS) {
 						int distance = 0;
 						int minDistance = Integer.MAX_VALUE;
 						int indexOfMin = 0;
-						for (int i = 0; i < interestingLocations.size(); i++) {
-							distance = rc.getLocation().distanceSquaredTo(interestingLocations.get(i));
+						for (int i = 0; i < corners.size(); i++) {
+							distance = rc.getLocation().distanceSquaredTo(corners.get(i));
 							if (distance < minDistance) {
 								minDistance = distance;
 								indexOfMin = i;
 							}
 						}
-						return interestingLocations.get(indexOfMin);
+						return corners.get(indexOfMin);
 					}
 					continue;
 				}
@@ -131,13 +136,12 @@ public class Archon extends BattlecodeRobot {
 				e.printStackTrace();
 			}
 		}
-		// return new MapLocation(0, 0);
 	}
 
 	/**
 	 * Handles a message received by archon.
 	 */
-	private void handleMessage() {
+	private void handleMessages() {
 		// Get all signals
 		Signal[] signals = rc.emptySignalQueue();
 		if (signals.length > 0) {
@@ -153,19 +157,21 @@ public class Archon extends BattlecodeRobot {
 			if (message == null) {
 				System.out.println("NULL MESSAGE");
 			} else {
-				int x = message[0];
-				int y = message[1];
+				int identifier = message[0];
+				int value = message[1];
+				MapLocation loc = ConfigUtils.decodeLocation(value);
 
-				if (x == ConfigUtils.MESSAGE_FOR_ARCHON) {
-					// Nothing interesting yet...
-				} else if (x >= 0 && y >= 0) {
-					// Messages with both non negative numbers
-					// are only for archons (interesting locations [dens or
-					// corners])
-					MapLocation loc = new MapLocation(x, y);
-					if (!interestingLocations.contains(loc)) {
-						interestingLocations.add(loc);
+				switch (identifier) {
+				case ConfigUtils.REPORTING_CORNER_LOCATION:
+					if (!corners.contains(loc)) {
+						corners.add(loc);
 					}
+					break;
+				case ConfigUtils.REPORTING_DEN_LOCATION:
+					if (!dens.contains(loc)) {
+						dens.add(loc);
+					}
+					break;
 				}
 			}
 		}
@@ -203,7 +209,7 @@ public class Archon extends BattlecodeRobot {
 				// nothing to do here
 			}
 		}
-		
+
 		return false;
 	}
 
