@@ -1,11 +1,11 @@
 package ours;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
 import battlecode.common.*;
+import scala.reflect.runtime.ThreadLocalStorage.MyThreadLocalStorage;
 
 public class Archon extends BattlecodeRobot {
 
@@ -16,14 +16,27 @@ public class Archon extends BattlecodeRobot {
 	Direction[] directions = { Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST,
 			Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST };
 
-	private final int numberOfScouts = 2;
+	private static final int NUMBER_OF_SCOUTS = 2; // For each archon
 
-	private List<MapLocation> discoveredDens = new ArrayList<>();
+	private List<MapLocation> interestingLocations = new ArrayList<>();
+	
+	private static final MapLocation ALREADY_IN_CORNER = new MapLocation(-1, -1); 
+	private static final MapLocation UNDEFINED_LOCATION = new MapLocation(-42, -42);
+	
+	/*
+	 * Maximum number of rounds (=time) for finding the location where to go.
+	 */
+	private static final int MAX_ROUNDS = 200;
 
 	@Override
 	public void run() {
-		
-		swarmToCorner(null);
+
+		MapLocation dest = getDestination();
+
+		// TODO: goToDestination( ... )
+		// TODO: barricade()
+
+		swarmToCorner(dest);
 	}
 
 	private void swarmToCorner(MapLocation goToLocation) {
@@ -39,7 +52,7 @@ public class Archon extends BattlecodeRobot {
 			goToLocation = goToLocation.add(Direction.NONE, 0);
 		}
 
-		while(true) {
+		while(!checkIfCornered(rc)) {
 			RobotInfo[] zombieEnemies = rc.senseNearbyRobots(rc.getType().attackRadiusSquared, Team.ZOMBIE);
 			RobotInfo[] normalEnemies = rc.senseNearbyRobots(rc.getType().attackRadiusSquared, rc.getTeam().opponent());
 			RobotInfo[] opponentEnemies = Utility.joinRobotInfo(zombieEnemies, normalEnemies);
@@ -65,80 +78,84 @@ public class Archon extends BattlecodeRobot {
 			}
 		}
 	}
-	
+
+	/**
+	 * Creates a few scouts and tries to find a zombie den or corner of the map.
+	 * 
+	 * @return The position where to go and make barricades.
+	 * If result is (-1,-1), then we are in the corner.
+	 * If 
+	 */
 	private MapLocation getDestination() {
 		Random rand = new Random(rc.getID());
 		int scoutsCreated = 0;
-		boolean firstCreated = false;
+		int broadcasted = 0;
 
-		List<Integer> directionsForScouts = new ArrayList<>(Arrays.asList(  
-			ConfigUtils.GO_NORTH_EAST,
-			ConfigUtils.GO_NORTH_WEST,
-			ConfigUtils.GO_SOUTH_EAST,
-			ConfigUtils.GO_SOUTH_WEST
-		));
-		
+		List<Integer> directionsForScouts = new ArrayList<>();
+		if (rc.getTeam() == Team.A) {
+			directionsForScouts.add(ConfigUtils.GO_NORTH_WEST);
+			directionsForScouts.add(ConfigUtils.GO_SOUTH_WEST);
+		} else {
+			directionsForScouts.add(ConfigUtils.GO_NORTH_EAST);
+			directionsForScouts.add(ConfigUtils.GO_NORTH_WEST);
+		}
+
+		// Check if we start at the corner
+		if (checkIfCornered(rc)) {
+			return ALREADY_IN_CORNER;
+		}
+
 		while (true) {
 
-			// Try to handle messages from scouts
+			if (rc.getRoundNum() > MAX_ROUNDS) {
+				return UNDEFINED_LOCATION;
+			}
+			
 			handleMessage();
-
-			// This is a loop to prevent the run() method from returning.
-			// Because of the Clock.yield()
-			// at the end of it, the loop will iterate once per game round.
+			
 			try {
-				if (rc.isCoreReady()) {
-					Direction dirToMove = Direction.NONE;
-					if (!discoveredDens.isEmpty()) {
-						int minDist = Integer.MAX_VALUE;
-						for (Direction dir : directions) {
-							MapLocation newLoc = rc.getLocation().add(dir);
-							int dist = newLoc.distanceSquaredTo(discoveredDens.get(0));
-							if (minDist > dist) {
-								minDist = dist;
-								dirToMove = dir;
+				RobotType typeToBuild = RobotType.SCOUT;
+				if (NUMBER_OF_SCOUTS <= scoutsCreated && NUMBER_OF_SCOUTS <= broadcasted) {
+					if (interestingLocations.size() >= NUMBER_OF_SCOUTS) {
+						int distance = 0;
+						int minDistance = Integer.MAX_VALUE;
+						int indexOfMin = 0;
+						for (int i = 0; i < interestingLocations.size(); i++) {
+							distance = rc.getLocation().distanceSquaredTo(interestingLocations.get(i));
+							if (distance < minDistance) {
+								minDistance = distance;
+								indexOfMin = i;
 							}
 						}
+						return interestingLocations.get(indexOfMin);
+					}
+					continue;
+				}
 
-						// Check the rubble in that direction
-						/*
-						if (rc.senseRubble(
-								rc.getLocation().add(dirToMove)) >= GameConstants.RUBBLE_OBSTRUCTION_THRESH) {
-							// Too much rubble, so I should clear it
-							rc.clearRubble(dirToMove);
-							// Check if I can move in this direction
-						} else if (rc.canMove(dirToMove)) {
-							// Move
-							rc.move(dirToMove);
-						}*/
-					} else {
-						// Choose a random unit to build
-						// RobotType typeToBuild = robotTypes[fate % 8];
-						RobotType typeToBuild = RobotType.SCOUT;
-						if (numberOfScouts < ++scoutsCreated) {
-							typeToBuild = RobotType.SOLDIER;
-						}
+				// Check for sufficient parts
+				if (rc.hasBuildRequirements(typeToBuild) && rc.isCoreReady()) {
+					// Choose a random direction to try to build in
+					final int spotsForBuild = 8;
+					Direction dirToBuild = directions[rand.nextInt(spotsForBuild)];
+					for (int i = 0; i < spotsForBuild; i++) {
 
-						// Check for sufficient parts
-						if (rc.hasBuildRequirements(typeToBuild)) {
-							// Choose a random direction to try to build in
-							Direction dirToBuild = directions[rand.nextInt(8)];
-							for (int i = 0; i < 8; i++) {
+						// If possible, build in this direction
+						if (rc.canBuild(dirToBuild, typeToBuild)) {
+							if (scoutsCreated > 0 && !directionsForScouts.isEmpty()) {
+								broadcastDirectionToScout(directionsForScouts.remove(0));
+								broadcasted++;
 
-								// If possible, build in this direction
-								if (rc.canBuild(dirToBuild, typeToBuild)) {
-									if (firstCreated && !directionsForScouts.isEmpty()) {
-										broadcastDirectionToScout(directionsForScouts.remove(0));
-									}
-									
-									rc.build(dirToBuild, typeToBuild);
-									firstCreated = true;
+								if (broadcasted >= NUMBER_OF_SCOUTS) {
 									break;
-								} else {
-									// Rotate the direction to try
-									dirToBuild = dirToBuild.rotateLeft();
 								}
 							}
+
+							rc.build(dirToBuild, typeToBuild);
+							scoutsCreated++;
+							break;
+						} else {
+							// Rotate the direction to try
+							dirToBuild = dirToBuild.rotateLeft();
 						}
 					}
 				}
@@ -148,9 +165,9 @@ public class Archon extends BattlecodeRobot {
 				e.printStackTrace();
 			}
 		}
-//		return new MapLocation(0, 0);
+		// return new MapLocation(0, 0);
 	}
-	
+
 	/**
 	 * Handles a message received by archon.
 	 */
@@ -174,28 +191,54 @@ public class Archon extends BattlecodeRobot {
 				int y = message[1];
 
 				if (x == ConfigUtils.MESSAGE_FOR_ARCHON) {
-					// TODO
+					// Nothing interesting yet...
 				} else if (x >= 0 && y >= 0) {
 					// Messages with both non negative numbers
-					// are only for archons (zombie dens broadcast)
+					// are only for archons (interesting locations [dens or
+					// corners])
 					MapLocation loc = new MapLocation(x, y);
-					if (!discoveredDens.contains(loc)) {
-						discoveredDens.add(loc);
+					if (!interestingLocations.contains(loc)) {
+						interestingLocations.add(loc);
 					}
-					System.out.println("ZOMBIE DEN AT: " + x + ", " + y);
 				}
 			}
 		}
 	}
-	
+
 	private void broadcastDirectionToScout(int direction) {
 		try {
-			rc.broadcastMessageSignal(ConfigUtils.MESSAGE_FOR_SCOUT, direction, 2);
+			rc.broadcastMessageSignal(ConfigUtils.MESSAGE_FOR_SCOUT, direction, 3);
 		} catch (GameActionException ex) {
 			System.out.println(ex.getMessage());
 			ex.printStackTrace();
 		}
 
+	}
+
+	public static boolean checkIfCornered(RobotController rc) {
+		List<Direction[]> dirToCheck = new ArrayList<>();
+		Team myTeam = rc.getTeam();
+		Team enemyTeam = myTeam.opponent();
+
+		dirToCheck.add(new Direction[] { Direction.NORTH, Direction.EAST });
+		dirToCheck.add(new Direction[] { Direction.NORTH, Direction.WEST });
+		dirToCheck.add(new Direction[] { Direction.SOUTH, Direction.EAST });
+		dirToCheck.add(new Direction[] { Direction.SOUTH, Direction.WEST });
+
+		for (Direction[] pair : dirToCheck) {
+			MapLocation candidateLocation0 = rc.getLocation().add(pair[0]);
+			MapLocation candidateLocation1 = rc.getLocation().add(pair[1]);
+
+			try {
+				if (!rc.onTheMap(candidateLocation0) && !rc.onTheMap(candidateLocation1)) {
+					return true;
+				}
+			} catch (GameActionException e) {
+				// nothing to do here
+			}
+		}
+		
+		return false;
 	}
 
 }
