@@ -91,7 +91,7 @@ public class Archon extends BattlecodeRobot {
 					}
 				}
 			} catch (GameActionException e) {
-
+				//nothing to do here
 			}
 		}
 	}
