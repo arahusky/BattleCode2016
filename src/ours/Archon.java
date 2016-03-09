@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Random;
 
 import battlecode.common.*;
+import scala.reflect.runtime.ThreadLocalStorage.MyThreadLocalStorage;
 
 public class Archon extends BattlecodeRobot {
 
@@ -58,9 +59,21 @@ public class Archon extends BattlecodeRobot {
 					dirToBuild = dirToBuild.rotateLeft();
 				}
 
+				//if there's only one location left, build guard
 				if (possibleDirectionsToBuild <= 1) {
 					typeToBuild = RobotType.GUARD;
 				}
+				
+				//if there's too little guards nearby, build guard
+				if (getMyNearbyUnitsCount() < 2) {
+					typeToBuild = RobotType.GUARD;
+				}
+				
+				//if there's too little guards nearby, build guard
+				if (isEnemyAhead() || getMyNearbyUnitsCount() < 5) {
+					typeToBuild = RobotType.GUARD;
+				}
+				
 
 				// Check for sufficient parts
 				if (rc.hasBuildRequirements(typeToBuild)) {
@@ -81,6 +94,23 @@ public class Archon extends BattlecodeRobot {
 
 			}
 		}
+	}
+
+	private int getMyNearbyUnitsCount() {
+		RobotInfo[] nearbyRobots = rc.senseNearbyRobots();
+
+		int res = 0;
+		for (RobotInfo ri : nearbyRobots) {
+			if (ri.team.equals(rc.getTeam())) {
+				res++;
+			}
+		}
+
+		return res;
+	}
+
+	private boolean isEnemyAhead() {
+		return rc.senseHostileRobots(rc.getLocation(), rc.getType().sensorRadiusSquared).length > 0;
 	}
 
 	private void swarmToCorner(MapLocation goToLocation) {

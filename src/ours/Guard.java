@@ -67,6 +67,8 @@ public class Guard extends BattlecodeRobot {
 						}
 					}
 				} else {
+					// no enemy seen, move in a random direction, so that we do
+					// not block archon to spawn new units
 					moveInRandomDirection();
 				}
 			} catch (GameActionException e) {
