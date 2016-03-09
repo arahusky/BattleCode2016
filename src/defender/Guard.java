@@ -1,4 +1,4 @@
-package ours;
+package defender;
 
 import java.util.Random;
 

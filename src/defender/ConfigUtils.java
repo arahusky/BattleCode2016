@@ -1,4 +1,4 @@
-package ours;
+package defender;
 
 import battlecode.common.Direction;
 import battlecode.common.MapLocation;
