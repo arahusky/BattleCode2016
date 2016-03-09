@@ -38,11 +38,50 @@ public class Archon extends BattlecodeRobot {
 	public void run() {
 
 		MapLocation dest = getDestination();
-
-		// TODO: goToDestination( ... )
-		// TODO: barricade()
-
+		System.out.println("Honza done");
 		swarmToCorner(dest);
+
+		barricade();
+	}
+
+	private void barricade() {
+		while (true) {
+			try {
+				RobotType typeToBuild = RobotType.TURRET;
+
+				Direction dirToBuild = directions[0];
+				int possibleDirectionsToBuild = 0;
+				for (int i = 0; i < 8; i++) {
+					// If possible, build in this direction
+					if (rc.canBuild(dirToBuild, typeToBuild)) {
+						possibleDirectionsToBuild++;
+					}
+					dirToBuild = dirToBuild.rotateLeft();
+				}
+
+				if (possibleDirectionsToBuild <= 1) {
+					typeToBuild = RobotType.GUARD;
+				}
+
+				// Check for sufficient parts
+				if (rc.hasBuildRequirements(typeToBuild)) {
+					// Choose a random direction to try to build in
+					dirToBuild = directions[0];
+					for (int i = 0; i < 8; i++) {
+						// If possible, build in this direction
+						if (rc.canBuild(dirToBuild, typeToBuild)) {
+							rc.build(dirToBuild, typeToBuild);
+							break;
+						} else {
+							// Rotate the direction to try
+							dirToBuild = dirToBuild.rotateLeft();
+						}
+					}
+				}
+			} catch (GameActionException e) {
+
+			}
+		}
 	}
 
 	private void swarmToCorner(MapLocation goToLocation) {
@@ -58,7 +97,7 @@ public class Archon extends BattlecodeRobot {
 			goToLocation = goToLocation.add(Direction.NONE, 0);
 		}
 
-		while(!checkIfCornered(rc)) {
+		while (!checkIfCornered(rc)) {
 			RobotInfo[] zombieEnemies = rc.senseNearbyRobots(rc.getType().attackRadiusSquared, Team.ZOMBIE);
 			RobotInfo[] normalEnemies = rc.senseNearbyRobots(rc.getType().attackRadiusSquared, rc.getTeam().opponent());
 			RobotInfo[] opponentEnemies = Utility.joinRobotInfo(zombieEnemies, normalEnemies);
@@ -72,8 +111,7 @@ public class Archon extends BattlecodeRobot {
 					if (rc.isCoreReady()) {
 						if (goToLocation == null) {
 							Utility.forwardish(rc, movingDirection);
-						}
-						else {
+						} else {
 							System.out.println("going to location");
 							Utility.goToLocation(rc, goToLocation);
 						}
