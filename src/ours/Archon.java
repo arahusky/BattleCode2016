@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Random;
 
 import battlecode.common.*;
-import scala.reflect.runtime.ThreadLocalStorage.MyThreadLocalStorage;
 
 public class Archon extends BattlecodeRobot {
 
@@ -38,9 +37,9 @@ public class Archon extends BattlecodeRobot {
 	public void run() {
 
 		MapLocation dest = getDestination();
-		System.out.println("Honza done");
+		System.out.println("Honkl done. Returning: " + dest.toString());
 		swarmToCorner(dest);
-
+		System.out.println("Helgrind done");
 		barricade();
 	}
 
@@ -112,7 +111,7 @@ public class Archon extends BattlecodeRobot {
 						if (goToLocation == null) {
 							Utility.forwardish(rc, movingDirection);
 						} else {
-							System.out.println("going to location");
+							// System.out.println("going to location");
 							Utility.goToLocation(rc, goToLocation);
 						}
 					}
@@ -134,15 +133,15 @@ public class Archon extends BattlecodeRobot {
 
 		if (rc.getTeam() == Team.A) {
 			directionsForScouts.add(ConfigUtils.GO_NORTH_WEST);
-			directionsForScouts.add(ConfigUtils.GO_SOUTH_WEST);
+			directionsForScouts.add(ConfigUtils.GO_SOUTH_EAST);
 		} else {
 			directionsForScouts.add(ConfigUtils.GO_NORTH_EAST);
-			directionsForScouts.add(ConfigUtils.GO_NORTH_WEST);
+			directionsForScouts.add(ConfigUtils.GO_SOUTH_WEST);
 		}
 
 		// Check if we start at the corner
 		if (checkIfCornered(rc)) {
-			sendScoutsAway();
+			sendScoutsAway(rc.getLocation());
 			return ALREADY_IN_CORNER;
 		}
 
@@ -156,7 +155,7 @@ public class Archon extends BattlecodeRobot {
 				if (!dens.isEmpty()) {
 					result = dens.get(0);
 				}
-				sendScoutsAway();
+				sendScoutsAway(result);
 				return result;
 			}
 
@@ -183,7 +182,7 @@ public class Archon extends BattlecodeRobot {
 								indexOfMin = i;
 							}
 						}
-						sendScoutsAway();
+						sendScoutsAway(corners.get(indexOfMin));
 						return corners.get(indexOfMin);
 					}
 				}
@@ -291,8 +290,11 @@ public class Archon extends BattlecodeRobot {
 		}
 	}
 
-	private void sendScoutsAway() {
-		broadcastLocationToScout(rc.getLocation());
+	/*
+	 * Send a message to scouts to go far away from the specified location.
+	 */
+	private void sendScoutsAway(MapLocation loc) {
+		broadcastLocationToScout(loc);
 	}
 
 	/*

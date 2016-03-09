@@ -32,8 +32,8 @@ public class Scout extends BattlecodeRobot {
 	private Direction subDirection1 = Direction.NONE;
 	private Direction subDirection2 = Direction.NONE;
 
-	private boolean atCorner = false;
-	private boolean cornerSwapped = false;
+	private boolean goAwayPhase = false;
+	private MapLocation archonBarricadeLoc = null;
 
 	@Override
 	public void run() {
@@ -61,14 +61,14 @@ public class Scout extends BattlecodeRobot {
 						broadcastLocation(loc, ConfigUtils.REPORTING_CORNER_LOCATION);
 						reportedLocations.add(loc);
 					}
-					atCorner = true;
+					goAwayPhase = true;
 				}
 
-				if (atCorner && !cornerSwapped) {
-					swapCorner();
+				if (goAwayPhase) {
+					goAway();
+				} else {
+					goToCorner();
 				}
-
-				goToCorner();
 
 			} catch (GameActionException e) {
 				System.out.println(e.getMessage());
@@ -77,24 +77,25 @@ public class Scout extends BattlecodeRobot {
 		}
 	}
 
-	@SuppressWarnings("incomplete-switch")
-	private void swapCorner() {
-		switch (mainDirection) {
-		case NORTH_EAST:
-			mainDirection = Direction.SOUTH_WEST;
-			break;
-		case NORTH_WEST:
-			mainDirection = Direction.SOUTH_EAST;
-			break;
-		case SOUTH_EAST:
-			mainDirection = Direction.NORTH_WEST;
-			break;
-		case SOUTH_WEST:
-			mainDirection = Direction.NORTH_EAST;
-			break;
+	private void goAway() throws GameActionException {
+		if (rc.isCoreReady()) {
+			int maxDistance = Integer.MIN_VALUE;
+			Direction dirToGo = Direction.NONE;
+			for (Direction dir : directions) {
+				if (rc.canMove(dir)) {
+					if (archonBarricadeLoc == null) {
+						// We need to wait for location, where archon will barricade
+						return;
+					}
+					int distance = archonBarricadeLoc.distanceSquaredTo(rc.getLocation().add(dir));
+					if (maxDistance < distance) {
+						maxDistance = distance;
+						dirToGo = dir;
+					}
+				}
+			}
+			rc.move(dirToGo);
 		}
-
-		cornerSwapped = true;
 	}
 
 	private void goToCorner() throws GameActionException {
@@ -156,7 +157,6 @@ public class Scout extends BattlecodeRobot {
 			System.out.println(ex.getMessage());
 			ex.printStackTrace();
 		}
-
 	}
 
 	/**
@@ -203,17 +203,8 @@ public class Scout extends BattlecodeRobot {
 				}
 
 				if (identifier == ConfigUtils.SCOUT_LOCATION) {
-					MapLocation loc = ConfigUtils.decodeLocation(value);
-					int maxDistance = Integer.MIN_VALUE;
-					Direction dirToGo = Direction.NONE;
-					for (Direction dir : directions) {
-						int distance = loc.distanceSquaredTo(rc.getLocation().add(dir));
-						if (maxDistance < distance) {
-							maxDistance = distance;
-							dirToGo = dir;
-						}
-					}
-					mainDirection = dirToGo;
+					archonBarricadeLoc = ConfigUtils.decodeLocation(value);
+					goAwayPhase = true;
 				}
 			}
 		}
