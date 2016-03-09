@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Random;
 
 import battlecode.common.*;
-import scala.reflect.runtime.ThreadLocalStorage.MyThreadLocalStorage;
 
 public class Archon extends BattlecodeRobot {
 
@@ -59,21 +58,20 @@ public class Archon extends BattlecodeRobot {
 					dirToBuild = dirToBuild.rotateLeft();
 				}
 
-				//if there's only one location left, build guard
+				// if there's only one location left, build guard
 				if (possibleDirectionsToBuild <= 1) {
 					typeToBuild = RobotType.GUARD;
 				}
-				
-				//if there's too little guards nearby, build guard
+
+				// if there's too little guards nearby, build guard
 				if (getMyNearbyUnitsCount() < 2) {
 					typeToBuild = RobotType.GUARD;
 				}
-				
-				//if there's too little guards nearby, build guard
+
+				// if there's too little guards nearby, build guard
 				if (isEnemyAhead() || getMyNearbyUnitsCount() < 5) {
 					typeToBuild = RobotType.GUARD;
 				}
-				
 
 				// Check for sufficient parts
 				if (rc.hasBuildRequirements(typeToBuild)) {
@@ -181,8 +179,7 @@ public class Archon extends BattlecodeRobot {
 				MapLocation result = UNDEFINED_LOCATION;
 				if (!corners.isEmpty()) {
 					result = corners.get(0);
-				}
-				if (!dens.isEmpty()) {
+				} else if (!dens.isEmpty()) {
 					result = dens.get(0);
 				}
 				sendScoutsAway(result);
@@ -324,7 +321,11 @@ public class Archon extends BattlecodeRobot {
 	 * Send a message to scouts to go far away from the specified location.
 	 */
 	private void sendScoutsAway(MapLocation loc) {
-		broadcastLocationToScout(loc);
+		if (loc == UNDEFINED_LOCATION) {
+			broadcastLocationToScout(rc.getLocation());
+		} else {
+			broadcastLocationToScout(loc);
+		}
 	}
 
 	/*
