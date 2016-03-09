@@ -94,7 +94,11 @@ public class Scout extends BattlecodeRobot {
 					}
 				}
 			}
-			rc.move(dirToGo);
+			if (rc.canMove(dirToGo)) {
+				rc.move(dirToGo);
+			} else {
+				rc.disintegrate();
+			}
 		}
 	}
 
