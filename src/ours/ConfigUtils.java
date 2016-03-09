@@ -3,7 +3,8 @@ package ours;
 import battlecode.common.MapLocation;
 
 public class ConfigUtils {
-	public static final int MESSAGE_FOR_SCOUT = -2;
+	public static final int SCOUT_DIRECTION = -2;
+	public static final int SCOUT_LOCATION = -5;
 	
 	public static final int REPORTING_DEN_LOCATION = -3;
 	public static final int REPORTING_CORNER_LOCATION = -4;

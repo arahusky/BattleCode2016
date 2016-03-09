@@ -29,6 +29,11 @@ public class Archon extends BattlecodeRobot {
 	 */
 	private static final int MAX_ROUNDS = 200;
 
+	private Random rand = null;
+	private int scoutsCreated = 0;
+	private int broadcastedToScouts = 0;
+	private List<Integer> directionsForScouts = new ArrayList<>();
+
 	@Override
 	public void run() {
 
@@ -87,11 +92,8 @@ public class Archon extends BattlecodeRobot {
 	 *         (-1,-1), then we are in the corner. If
 	 */
 	private MapLocation getDestination() {
-		Random rand = new Random(rc.getID());
-		int scoutsCreated = 0;
-		int broadcasted = 0;
+		rand = new Random(rc.getID());
 
-		List<Integer> directionsForScouts = new ArrayList<>();
 		if (rc.getTeam() == Team.A) {
 			directionsForScouts.add(ConfigUtils.GO_NORTH_WEST);
 			directionsForScouts.add(ConfigUtils.GO_SOUTH_WEST);
@@ -102,26 +104,36 @@ public class Archon extends BattlecodeRobot {
 
 		// Check if we start at the corner
 		if (checkIfCornered(rc)) {
+			sendScoutsAway();
 			return ALREADY_IN_CORNER;
 		}
 
 		while (true) {
 
 			if (rc.getRoundNum() > MAX_ROUNDS) {
+				MapLocation result = UNDEFINED_LOCATION;
 				if (!corners.isEmpty()) {
-					return corners.get(0);
+					result = corners.get(0);
 				}
 				if (!dens.isEmpty()) {
-					return dens.get(0);
+					result = dens.get(0);
 				}
-				return UNDEFINED_LOCATION;
+				sendScoutsAway();
+				return result;
 			}
 
 			handleMessages();
 
 			try {
-				RobotType typeToBuild = RobotType.SCOUT;
-				if (NUMBER_OF_SCOUTS <= scoutsCreated && NUMBER_OF_SCOUTS <= broadcasted) {
+
+				if (NUMBER_OF_SCOUTS > scoutsCreated) {
+					tryCreateUnit(RobotType.SCOUT);
+				}
+
+				// In the meantime, build guards
+				tryCreateUnit(RobotType.GUARD);
+
+				if (NUMBER_OF_SCOUTS <= scoutsCreated && NUMBER_OF_SCOUTS <= broadcastedToScouts) {
 					if (corners.size() >= NUMBER_OF_SCOUTS) {
 						int distance = 0;
 						int minDistance = Integer.MAX_VALUE;
@@ -133,42 +145,44 @@ public class Archon extends BattlecodeRobot {
 								indexOfMin = i;
 							}
 						}
+						sendScoutsAway();
 						return corners.get(indexOfMin);
-					}
-					continue;
-				}
-
-				// Check for sufficient parts
-				if (rc.hasBuildRequirements(typeToBuild) && rc.isCoreReady()) {
-					// Choose a random direction to try to build in
-					final int spotsForBuild = 8;
-					Direction dirToBuild = directions[rand.nextInt(spotsForBuild)];
-					for (int i = 0; i < spotsForBuild; i++) {
-
-						// If possible, build in this direction
-						if (rc.canBuild(dirToBuild, typeToBuild)) {
-							if (scoutsCreated > 0 && !directionsForScouts.isEmpty()) {
-								broadcastDirectionToScout(directionsForScouts.remove(0));
-								broadcasted++;
-
-								if (broadcasted >= NUMBER_OF_SCOUTS) {
-									break;
-								}
-							}
-
-							rc.build(dirToBuild, typeToBuild);
-							scoutsCreated++;
-							break;
-						} else {
-							// Rotate the direction to try
-							dirToBuild = dirToBuild.rotateLeft();
-						}
 					}
 				}
 				Clock.yield();
 			} catch (Exception e) {
 				System.out.println(e.getMessage());
 				e.printStackTrace();
+			}
+		}
+	}
+
+	private void tryCreateUnit(RobotType typeToBuild) throws GameActionException {
+		// Check for sufficient parts
+		if (rc.hasBuildRequirements(typeToBuild) && rc.isCoreReady()) {
+			// Choose a random direction to try to build in
+			final int spotsForBuild = 8;
+			Direction dirToBuild = directions[rand.nextInt(spotsForBuild)];
+			for (int i = 0; i < spotsForBuild; i++) {
+
+				// If possible, build in this direction
+				if (rc.canBuild(dirToBuild, typeToBuild)) {
+
+					if (scoutsCreated > 0 && !directionsForScouts.isEmpty()) {
+						broadcastDirectionToScout(directionsForScouts.remove(0));
+						broadcastedToScouts++;
+					}
+
+					rc.build(dirToBuild, typeToBuild);
+					if (typeToBuild == RobotType.SCOUT) {
+						scoutsCreated++;
+					}
+
+					break;
+				} else {
+					// Rotate the direction to try
+					dirToBuild = dirToBuild.rotateLeft();
+				}
 			}
 		}
 	}
@@ -212,20 +226,43 @@ public class Archon extends BattlecodeRobot {
 		}
 	}
 
+	/*
+	 * Broadcasts the specified direction to scouts. Scouts should move in this
+	 * direction. Used after initialization of the scouts.
+	 */
 	private void broadcastDirectionToScout(int direction) {
 		try {
-			rc.broadcastMessageSignal(ConfigUtils.MESSAGE_FOR_SCOUT, direction, 3);
+			rc.broadcastMessageSignal(ConfigUtils.SCOUT_DIRECTION, direction, 3);
 		} catch (GameActionException ex) {
 			System.out.println(ex.getMessage());
 			ex.printStackTrace();
 		}
-
 	}
 
+	/*
+	 * Broadcasts the specified location to scouts. Scouts should go far away
+	 * from this location.
+	 */
+	private void broadcastLocationToScout(MapLocation loc) {
+		try {
+			int mapSizeSq = 80 * 80; // broadcasting across whole map
+			rc.broadcastMessageSignal(ConfigUtils.SCOUT_LOCATION, ConfigUtils.encodeLocation(loc), mapSizeSq);
+		} catch (GameActionException ex) {
+			System.out.println(ex.getMessage());
+			ex.printStackTrace();
+		}
+	}
+
+	private void sendScoutsAway() {
+		broadcastLocationToScout(rc.getLocation());
+	}
+
+	/*
+	 * Checks if location of the specified robot (robot controller) is in the
+	 * corner of the map.
+	 */
 	public static boolean checkIfCornered(RobotController rc) {
 		List<Direction[]> dirToCheck = new ArrayList<>();
-		Team myTeam = rc.getTeam();
-		Team enemyTeam = myTeam.opponent();
 
 		dirToCheck.add(new Direction[] { Direction.NORTH, Direction.EAST });
 		dirToCheck.add(new Direction[] { Direction.NORTH, Direction.WEST });

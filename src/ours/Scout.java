@@ -77,6 +77,7 @@ public class Scout extends BattlecodeRobot {
 		}
 	}
 
+	@SuppressWarnings("incomplete-switch")
 	private void swapCorner() {
 		switch (mainDirection) {
 		case NORTH_EAST:
@@ -170,11 +171,11 @@ public class Scout extends BattlecodeRobot {
 			if (message == null) {
 				System.out.println("NULL MESSAGE");
 			} else {
-				int x = message[0];
-				int y = message[1];
+				int identifier = message[0];
+				int value = message[1];
 
-				if (x == ConfigUtils.MESSAGE_FOR_SCOUT) {
-					switch (y) {
+				if (identifier == ConfigUtils.SCOUT_DIRECTION) {
+					switch (value) {
 					case ConfigUtils.GO_NORTH_EAST:
 						mainDirection = Direction.NORTH_EAST;
 						subDirection1 = Direction.NORTH;
@@ -199,6 +200,20 @@ public class Scout extends BattlecodeRobot {
 					default:
 						break;
 					}
+				}
+
+				if (identifier == ConfigUtils.SCOUT_LOCATION) {
+					MapLocation loc = ConfigUtils.decodeLocation(value);
+					int maxDistance = Integer.MIN_VALUE;
+					Direction dirToGo = Direction.NONE;
+					for (Direction dir : directions) {
+						int distance = loc.distanceSquaredTo(rc.getLocation().add(dir));
+						if (maxDistance < distance) {
+							maxDistance = distance;
+							dirToGo = dir;
+						}
+					}
+					mainDirection = dirToGo;
 				}
 			}
 		}
