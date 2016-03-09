@@ -1,8 +1,14 @@
 package ours;
 
+import battlecode.common.Direction;
 import battlecode.common.MapLocation;
 
 public class ConfigUtils {
+	
+	public static final Direction[] POSSIBLE_DIRECTIONS = { Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST,
+			Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST };
+
+	
 	public static final int SCOUT_DIRECTION = -2;
 	public static final int SCOUT_LOCATION = -5;
 	

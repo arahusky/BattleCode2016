@@ -1,5 +1,8 @@
 package ours;
 
+import java.util.Random;
+
+import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
@@ -10,64 +13,108 @@ import battlecode.common.Team;
 
 public class Guard extends BattlecodeRobot {
 
+	Team myTeam;
+	Team opponentTeam;
+	Random rand;
+
 	public Guard(RobotController rc) {
 		this.rc = rc;
+		myTeam = rc.getTeam();
+		opponentTeam = rc.getTeam().opponent();
+		rand = new Random(rc.getID());
 	}
 
 	@Override
 	public void run() {
 		while (true) {
 			try {
-				boolean attacking = false;
-				RobotInfo[] zombieArray = rc.senseNearbyRobots(rc.getType().sensorRadiusSquared, Team.ZOMBIE);
-				RobotInfo[] allEnemyArray = rc.senseHostileRobots(rc.getLocation(), rc.getType().attackRadiusSquared);
-				//prefer to kill zombies first
-				if (zombieArray.length > 0) {
+				RobotInfo[] nearbyZombies = rc.senseNearbyRobots(rc.getType().sensorRadiusSquared, Team.ZOMBIE);
+				RobotInfo[] nearbyOpponent = rc.senseNearbyRobots(rc.getType().sensorRadiusSquared, opponentTeam);
+
+				// if there is any enemy nearby
+				if (nearbyZombies.length > 0 || nearbyOpponent.length > 0) {
+
+					RobotInfo attackableZombie = null;
+					RobotInfo attackableEnemy = null;
+
 					if (rc.isWeaponReady()) {
-						// look for adjacent zombies to attack
-						for (RobotInfo zombie : zombieArray) {
-							if (rc.canAttackLocation(zombie.location)) {
-								rc.attackLocation(zombie.location);
-								attacking = true;
-								break;
-							}
-						}
+						attackableZombie = canAttackEnemy(nearbyZombies);
+						attackableEnemy = canAttackEnemy(nearbyOpponent);
 					}
 
-					if (!attacking) {
-						// could not find any zombies adjacent to attack
+					if (attackableZombie != null) {
+						rc.attackLocation(attackableZombie.location);
+					} else if (attackableEnemy != null) {
+						rc.attackLocation(attackableEnemy.location);
+					} else {
+						// could not find any enemy adjacent to attack
 						// try to move toward them
-						if (rc.isCoreReady()) {
-							MapLocation goal = zombieArray[0].location;
-							Direction toEnemy = rc.getLocation().directionTo(goal);
-							if (rc.canMove(toEnemy)) {
-								rc.setIndicatorString(0, "moving to enemy");
-								rc.move(toEnemy);
-							} else {
-								MapLocation ahead = rc.getLocation().add(toEnemy);
-								if (rc.senseRubble(ahead) >= GameConstants.RUBBLE_OBSTRUCTION_THRESH) {
-									rc.clearRubble(toEnemy);
-								}
-							}
+						MapLocation goal = null;
+						if (nearbyZombies.length > 0) {
+							goal = nearbyZombies[0].location;
+						} else if (nearbyOpponent.length > 0) {
+							goal = nearbyOpponent[0].location;
 						}
-					}
-				}
 
-				if (!attacking && allEnemyArray.length > 0) {
-					if (rc.isWeaponReady()) {
-						// look for adjacent enemies to attack
-						for (RobotInfo enemy : allEnemyArray) {
-							if (rc.canAttackLocation(enemy.location)) {
-								rc.attackLocation(enemy.location);
-								break;
+						Direction toEnemy = rc.getLocation().directionTo(goal);
+						if (rc.canMove(toEnemy)) {
+							rc.move(toEnemy);
+						} else {
+							MapLocation ahead = rc.getLocation().add(toEnemy);
+							if (rc.senseRubble(ahead) >= GameConstants.RUBBLE_OBSTRUCTION_THRESH) {
+								rc.clearRubble(toEnemy);
 							}
 						}
 					}
+				} else {
+					moveInRandomDirection();
 				}
 			} catch (GameActionException e) {
 				// nothing to do here
 			}
+			Clock.yield();
 		}
 	}
 
+	/**
+	 * Checks, whether any of the specified enemies can be attacked. The first
+	 * one that can be attacked is returned. If no such exists, null is
+	 * returned.
+	 * 
+	 */
+	private RobotInfo canAttackEnemy(RobotInfo[] enemies) throws GameActionException {
+		for (RobotInfo enemy : enemies) {
+			if (rc.canAttackLocation(enemy.location)) {
+				rc.attackLocation(enemy.location);
+				return enemy;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Tries to move the robot in a random direction. If there is too much
+	 * rubble in the direction, the robot will clear it.
+	 */
+	private void moveInRandomDirection() throws GameActionException {
+		int fate = rand.nextInt(1000);
+		Direction[] directions = ConfigUtils.POSSIBLE_DIRECTIONS;
+
+		if (rc.isCoreReady()) {
+			if (fate < 600) {
+				// Choose a random direction to try to move in
+				Direction dirToMove = directions[fate % 8];
+				// Check the rubble in that direction
+				if (rc.senseRubble(rc.getLocation().add(dirToMove)) >= GameConstants.RUBBLE_OBSTRUCTION_THRESH) {
+					// Too much rubble, so I should clear it
+					rc.clearRubble(dirToMove);
+					// Check if I can move in this direction
+				} else if (rc.canMove(dirToMove)) {
+					// Move
+					rc.move(dirToMove);
+				}
+			}
+		}
+	}
 }
