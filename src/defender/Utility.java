@@ -37,42 +37,69 @@ public class Utility {
 		}
 		patient = false;
 	}
-	
+
 	public static RobotInfo[] joinRobotInfo(RobotInfo[] a, RobotInfo[] b) {
 		RobotInfo[] all = new RobotInfo[a.length + b.length];
 		int index = 0;
-		for (RobotInfo i:a) {
+		for (RobotInfo i : a) {
 			all[index] = i;
 			index++;
 		}
-		for (RobotInfo i:b) {
+		for (RobotInfo i : b) {
 			all[index] = i;
 			index++;
 		}
 		return all;
 	}
 
-	public static void goToLocation(RobotController rc, MapLocation goToLocation)  throws GameActionException {
+	public static void goToLocation(RobotController rc, MapLocation goToLocation) throws GameActionException {
 		MapLocation myPos = rc.getLocation();
 
 		int x = goToLocation.x - myPos.x;
 		int y = goToLocation.y - myPos.y;
 
 		Direction goToDirection;
-		if (x < 0 && y < 0) goToDirection = Direction.NORTH_WEST;
-		else if (x > 0 && y < 0) goToDirection = Direction.NORTH_EAST;
-		else if (x < 0 && y > 0) goToDirection = Direction.SOUTH_WEST;
-		else if (x > 0 && y > 0) goToDirection = Direction.SOUTH_EAST;
-		else if (x < 0) goToDirection = Direction.WEST;
-		else if (x > 0) goToDirection = Direction.EAST;
-		else if (y < 0) goToDirection = Direction.NORTH;
-		else if (y > 0) goToDirection = Direction.SOUTH;
-		else goToDirection = Direction.NONE;
+		if (x < 0 && y < 0)
+			goToDirection = Direction.NORTH_WEST;
+		else if (x > 0 && y < 0)
+			goToDirection = Direction.NORTH_EAST;
+		else if (x < 0 && y > 0)
+			goToDirection = Direction.SOUTH_WEST;
+		else if (x > 0 && y > 0)
+			goToDirection = Direction.SOUTH_EAST;
+		else if (x < 0)
+			goToDirection = Direction.WEST;
+		else if (x > 0)
+			goToDirection = Direction.EAST;
+		else if (y < 0)
+			goToDirection = Direction.NORTH;
+		else if (y > 0)
+			goToDirection = Direction.SOUTH;
+		else
+			goToDirection = Direction.NONE;
 
-//		rc.setIndicatorString(0, "mypos " + myPos);
-//		rc.setIndicatorString(1, "goto " + goToLocation);
-//		rc.setIndicatorString(2, "dir " + goToDirection + " x " + x + " y " + y);
+		// rc.setIndicatorString(0, "mypos " + myPos);
+		// rc.setIndicatorString(1, "goto " + goToLocation);
+		// rc.setIndicatorString(2, "dir " + goToDirection + " x " + x + " y " +
+		// y);
 
 		forwardish(rc, goToDirection);
 	}
+
+	public static boolean seeCorner(RobotController rc) throws GameActionException {
+		int sight = rc.getType().sensorRadiusSquared;
+		Direction[] dirsToCheck = new Direction[] { Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST };
+		int outOfMapDirections = 0;
+		for (Direction dir : dirsToCheck) {
+			MapLocation locToCheck = rc.getLocation().add(dir, (int)Math.sqrt(sight));
+			if (!rc.onTheMap(locToCheck)) {
+				outOfMapDirections++;
+			}
+		}
+		if (outOfMapDirections >= 2) {
+			return true;
+		}
+		return false;
+	}
+
 }

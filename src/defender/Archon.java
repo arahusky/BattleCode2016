@@ -89,7 +89,7 @@ public class Archon extends BattlecodeRobot {
 					}
 				}
 			} catch (GameActionException e) {
-				//nothing to do here
+				// nothing to do here
 			}
 		}
 	}
@@ -268,24 +268,23 @@ public class Archon extends BattlecodeRobot {
 		for (Signal s : signals) {
 			int[] message = s.getMessage();
 			if (message == null) {
-				System.out.println("NULL MESSAGE");
-			} else {
-				int identifier = message[0];
-				int value = message[1];
-				MapLocation loc = ConfigUtils.decodeLocation(value);
+				return;
+			}
+			int identifier = message[0];
+			int value = message[1];
+			MapLocation loc = ConfigUtils.decodeLocation(value);
 
-				switch (identifier) {
-				case ConfigUtils.REPORTING_CORNER_LOCATION:
-					if (!corners.contains(loc)) {
-						corners.add(loc);
-					}
-					break;
-				case ConfigUtils.REPORTING_DEN_LOCATION:
-					if (!dens.contains(loc)) {
-						dens.add(loc);
-					}
-					break;
+			switch (identifier) {
+			case ConfigUtils.REPORTING_CORNER_LOCATION:
+				if (!corners.contains(loc)) {
+					corners.add(loc);
 				}
+				break;
+			case ConfigUtils.REPORTING_DEN_LOCATION:
+				if (!dens.contains(loc)) {
+					dens.add(loc);
+				}
+				break;
 			}
 		}
 	}
