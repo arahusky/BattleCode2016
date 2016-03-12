@@ -37,7 +37,7 @@ public class Archon extends BattlecodeRobot {
 	public void run() {
 
 		MapLocation dest = getDestination();
-		System.out.println("Honkl done. Returning: " + dest.toString());
+		System.out.println("Honkl done. Returning: " + dest.toString() + " current: " + rc.getLocation().toString());
 		swarmToCorner(dest);
 		System.out.println("Helgrind done");
 		barricade();
@@ -124,6 +124,10 @@ public class Archon extends BattlecodeRobot {
 			goToLocation = goToLocation.add(Direction.NONE, 0);
 		}
 
+		try {
+			rc.broadcastMessageSignal(ConfigUtils.MOVE_TO_CORNER_LOCATION, ConfigUtils.encodeLocation(goToLocation), 6);
+		} catch (GameActionException e) { }
+
 		while (!checkIfCornered(rc)) {
 			RobotInfo[] zombieEnemies = rc.senseNearbyRobots(rc.getType().attackRadiusSquared, Team.ZOMBIE);
 			RobotInfo[] normalEnemies = rc.senseNearbyRobots(rc.getType().attackRadiusSquared, rc.getTeam().opponent());
@@ -139,12 +143,15 @@ public class Archon extends BattlecodeRobot {
 						if (goToLocation == null) {
 							Utility.forwardish(rc, movingDirection);
 						} else {
-							// System.out.println("going to location");
 							Utility.goToLocation(rc, goToLocation);
 						}
 					}
 				}
 			} catch (GameActionException e) {
+				if (e.getType() == GameActionExceptionType.CANT_MOVE_THERE) {
+					System.out.println("BREAKING SWARMING");
+					break;
+				}
 				e.printStackTrace();
 			}
 		}

@@ -14,6 +14,7 @@ public class ConfigUtils {
 	
 	public static final int REPORTING_DEN_LOCATION = -3;
 	public static final int REPORTING_CORNER_LOCATION = -4;
+	public static final int MOVE_TO_CORNER_LOCATION = -5;
 	
 	
 	public static final int GO_SOUTH_WEST = 1;

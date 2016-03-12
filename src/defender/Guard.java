@@ -2,20 +2,20 @@ package defender;
 
 import java.util.Random;
 
-import battlecode.common.Clock;
-import battlecode.common.Direction;
-import battlecode.common.GameActionException;
-import battlecode.common.GameConstants;
-import battlecode.common.MapLocation;
-import battlecode.common.RobotController;
-import battlecode.common.RobotInfo;
-import battlecode.common.Team;
+import battlecode.common.*;
 
 public class Guard extends BattlecodeRobot {
+
+	static final int STATUS_INITIAL = 0;
+	static final int STATUS_MOVING = 1;
+	static final int STATUS_DEFENDING = 2;
 
 	Team myTeam;
 	Team opponentTeam;
 	Random rand;
+
+	int status = STATUS_INITIAL;
+	MapLocation moveToLocation;
 
 	public Guard(RobotController rc) {
 		this.rc = rc;
@@ -27,54 +27,111 @@ public class Guard extends BattlecodeRobot {
 	@Override
 	public void run() {
 		while (true) {
-			try {
-				RobotInfo[] nearbyZombies = rc.senseNearbyRobots(rc.getType().sensorRadiusSquared, Team.ZOMBIE);
-				RobotInfo[] nearbyOpponent = rc.senseNearbyRobots(rc.getType().sensorRadiusSquared, opponentTeam);
+			handleMessages();
 
-				// if there is any enemy nearby
-				if (nearbyZombies.length > 0 || nearbyOpponent.length > 0) {
+			// @TODO see corner, switch status
 
-					RobotInfo attackableZombie = null;
-					RobotInfo attackableEnemy = null;
-
-					if (rc.isWeaponReady()) {
-						attackableZombie = canAttackEnemy(nearbyZombies);
-						attackableEnemy = canAttackEnemy(nearbyOpponent);
-					}
-
-					if (attackableZombie != null) {
-						rc.attackLocation(attackableZombie.location);
-					} else if (attackableEnemy != null) {
-						rc.attackLocation(attackableEnemy.location);
-					} else {
-						// could not find any enemy adjacent to attack
-						// try to move toward them
-						MapLocation goal = null;
-						if (nearbyZombies.length > 0) {
-							goal = nearbyZombies[0].location;
-						} else if (nearbyOpponent.length > 0) {
-							goal = nearbyOpponent[0].location;
-						}
-
-						Direction toEnemy = rc.getLocation().directionTo(goal);
-						if (rc.canMove(toEnemy)) {
-							rc.move(toEnemy);
-						} else {
-							MapLocation ahead = rc.getLocation().add(toEnemy);
-							if (rc.senseRubble(ahead) >= GameConstants.RUBBLE_OBSTRUCTION_THRESH) {
-								rc.clearRubble(toEnemy);
-							}
-						}
-					}
-				} else {
-					// no enemy seen, move in a random direction, so that we do
-					// not block archon to spawn new units
-					moveInRandomDirection();
-				}
-			} catch (GameActionException e) {
-				// nothing to do here
+			switch (status){
+				case STATUS_INITIAL:
+					defend();
+					break;
+				case STATUS_MOVING:
+					move(moveToLocation);
+					break;
+				case STATUS_DEFENDING:
+					defend();
+					break;
 			}
+
 			Clock.yield();
+		}
+	}
+
+	private void move(MapLocation moveToLocation) {
+		try {
+			Utility.goToLocation(rc, moveToLocation);
+		} catch (GameActionException e) {}
+	}
+
+	private void defend() {
+		try {
+			RobotInfo[] nearbyZombies = rc.senseNearbyRobots(rc.getType().sensorRadiusSquared, Team.ZOMBIE);
+			RobotInfo[] nearbyOpponent = rc.senseNearbyRobots(rc.getType().sensorRadiusSquared, opponentTeam);
+
+			// if there is any enemy nearby
+			if (nearbyZombies.length > 0 || nearbyOpponent.length > 0) {
+
+				RobotInfo attackableZombie = null;
+				RobotInfo attackableEnemy = null;
+
+				if (rc.isWeaponReady()) {
+					attackableZombie = canAttackEnemy(nearbyZombies);
+					attackableEnemy = canAttackEnemy(nearbyOpponent);
+				}
+
+				if (attackableZombie != null) {
+					rc.attackLocation(attackableZombie.location);
+				} else if (attackableEnemy != null) {
+					rc.attackLocation(attackableEnemy.location);
+				} else {
+					// could not find any enemy adjacent to attack
+					// try to move toward them
+					MapLocation goal = null;
+					if (nearbyZombies.length > 0) {
+						goal = nearbyZombies[0].location;
+					} else if (nearbyOpponent.length > 0) {
+						goal = nearbyOpponent[0].location;
+					}
+
+					Direction toEnemy = rc.getLocation().directionTo(goal);
+					if (rc.canMove(toEnemy)) {
+						rc.move(toEnemy);
+					} else {
+						MapLocation ahead = rc.getLocation().add(toEnemy);
+						if (rc.senseRubble(ahead) >= GameConstants.RUBBLE_OBSTRUCTION_THRESH) {
+							rc.clearRubble(toEnemy);
+						}
+					}
+				}
+			} else {
+				// no enemy seen, move in a random direction, so that we do
+				// not block archon to spawn new units
+				moveInRandomDirection();
+			}
+		} catch (GameActionException e) {
+			// nothing to do here
+		}
+	}
+
+	/**
+	 * Handles a message received by Guard.
+	 */
+	private void handleMessages() {
+		// Get all signals
+		Signal[] signals = rc.emptySignalQueue();
+		if (signals.length > 0) {
+			// Set an indicator string that can be viewed in the client
+			rc.setIndicatorString(0, "I received a signal this turn!");
+		} else {
+			rc.setIndicatorString(0, "I don't any signal buddies");
+		}
+
+		for (Signal s : signals) {
+			int[] message = s.getMessage();
+			if (message == null) {
+				System.out.println("NULL MESSAGE");
+			} else {
+				int identifier = message[0];
+				int value = message[1];
+				MapLocation loc = ConfigUtils.decodeLocation(value);
+
+				switch (identifier) {
+					case ConfigUtils.MOVE_TO_CORNER_LOCATION:
+						moveToLocation = loc;
+						status = STATUS_MOVING;
+						break;
+				}
+			}
 		}
 	}
 

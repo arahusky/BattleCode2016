@@ -5,7 +5,7 @@ import battlecode.common.*;
 import java.util.ArrayList;
 
 public class Utility {
-	static int[] possibleDirections = new int[] { 0, 1, -1, 2, -2, 3, -3, 4 };
+	static int[] possibleDirections = new int[]{0, 1, -1, 2, -2, 3, -3, 4};
 	static ArrayList<MapLocation> pastLocations = new ArrayList<MapLocation>();
 	static boolean patient = true;
 
@@ -37,22 +37,22 @@ public class Utility {
 		}
 		patient = false;
 	}
-	
+
 	public static RobotInfo[] joinRobotInfo(RobotInfo[] a, RobotInfo[] b) {
 		RobotInfo[] all = new RobotInfo[a.length + b.length];
 		int index = 0;
-		for (RobotInfo i:a) {
+		for (RobotInfo i : a) {
 			all[index] = i;
 			index++;
 		}
-		for (RobotInfo i:b) {
+		for (RobotInfo i : b) {
 			all[index] = i;
 			index++;
 		}
 		return all;
 	}
 
-	public static void goToLocation(RobotController rc, MapLocation goToLocation)  throws GameActionException {
+	public static void goToLocation(RobotController rc, MapLocation goToLocation) throws GameActionException {
 		MapLocation myPos = rc.getLocation();
 
 		int x = goToLocation.x - myPos.x;
@@ -73,6 +73,24 @@ public class Utility {
 //		rc.setIndicatorString(1, "goto " + goToLocation);
 //		rc.setIndicatorString(2, "dir " + goToDirection + " x " + x + " y " + y);
 
-		forwardish(rc, goToDirection);
+		forwardishNoReturn(rc, goToDirection);
+	}
+
+	public static void forwardishNoReturn(RobotController rc, Direction ahead) throws GameActionException {
+		for (int i : possibleDirections) {
+			Direction canidateDirection = Direction.values()[(ahead.ordinal() + i + 8) % 8];
+			MapLocation canidateLocation = rc.getLocation().add(canidateDirection);
+
+			if (rc.canMove(canidateDirection) && !pastLocations.contains(canidateLocation)) {
+				pastLocations.add(rc.getLocation());
+				if (pastLocations.size() > 20) {
+					pastLocations.remove(0);
+				}
+				rc.move(canidateDirection);
+				return;
+			}
+		}
+
+		throw new GameActionException(GameActionExceptionType.CANT_MOVE_THERE, "Cant move");
 	}
 }
