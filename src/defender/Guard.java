@@ -3,6 +3,7 @@ package defender;
 import java.util.Random;
 
 import battlecode.common.*;
+import team181.Util;
 
 public class Guard extends BattlecodeRobot {
 
@@ -29,7 +30,11 @@ public class Guard extends BattlecodeRobot {
 		while (true) {
 			handleMessages();
 
-			// @TODO see corner, switch status
+			try {
+				if (status == STATUS_MOVING && Utility.seeCorner(rc)) {
+					status = STATUS_DEFENDING;
+				}
+			} catch (GameActionException e) {}
 
 			switch (status){
 				case STATUS_INITIAL:
