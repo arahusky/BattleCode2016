@@ -4,8 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import javax.security.auth.login.Configuration;
-
+import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
@@ -35,8 +34,15 @@ public class Scout extends BattlecodeRobot {
 	private boolean goAwayPhase = false;
 	private MapLocation archonBarricadeLoc = null;
 
+	private Random rnd = null;
+
+	private final int STEP_LIMIT = 25;
+	private int actualSteps = 0;
+
 	@Override
 	public void run() {
+
+		rnd = new Random(rc.getID());
 
 		while (true) {
 
@@ -66,6 +72,10 @@ public class Scout extends BattlecodeRobot {
 
 				if (goAwayPhase) {
 					goAway();
+					if (actualSteps >= STEP_LIMIT) {
+						fakeBroadcast();
+						Clock.yield();
+					}
 				} else {
 					goToCorner();
 				}
@@ -77,6 +87,21 @@ public class Scout extends BattlecodeRobot {
 		}
 	}
 
+	private void fakeBroadcast() throws GameActionException {
+		final int distance = 80 * 80;
+		int flag = rnd.nextInt();
+		int value = rnd.nextInt();
+		if (ConfigUtils.USED_CONSTANTS.contains(flag)) {
+			return;
+		}
+
+		final int maxBroadcastCount = 20;
+		if (rc.getBasicSignalCount() >= maxBroadcastCount) {
+			return;
+		}
+		rc.broadcastMessageSignal(flag, value, distance);
+	}
+
 	private void goAway() throws GameActionException {
 		if (rc.isCoreReady()) {
 			int maxDistance = Integer.MIN_VALUE;
@@ -84,7 +109,8 @@ public class Scout extends BattlecodeRobot {
 			for (Direction dir : directions) {
 				if (rc.canMove(dir)) {
 					if (archonBarricadeLoc == null) {
-						// We need to wait for location, where archon will barricade
+						// We need to wait for location, where archon will
+						// barricade
 						return;
 					}
 					int distance = archonBarricadeLoc.distanceSquaredTo(rc.getLocation().add(dir));
@@ -96,6 +122,7 @@ public class Scout extends BattlecodeRobot {
 			}
 			if (rc.canMove(dirToGo)) {
 				rc.move(dirToGo);
+				actualSteps++;
 			} else {
 				rc.disintegrate();
 			}
@@ -173,43 +200,43 @@ public class Scout extends BattlecodeRobot {
 		for (Signal s : signals) {
 			int[] message = s.getMessage();
 			if (message == null) {
-				System.out.println("NULL MESSAGE");
-			} else {
-				int identifier = message[0];
-				int value = message[1];
+				return;
+			}
+			int identifier = message[0];
+			int value = message[1];
 
-				if (identifier == ConfigUtils.SCOUT_DIRECTION) {
-					switch (value) {
-					case ConfigUtils.GO_NORTH_EAST:
-						mainDirection = Direction.NORTH_EAST;
-						subDirection1 = Direction.NORTH;
-						subDirection2 = Direction.EAST;
-						break;
-					case ConfigUtils.GO_NORTH_WEST:
-						mainDirection = Direction.NORTH_WEST;
-						subDirection1 = Direction.NORTH;
-						subDirection2 = Direction.WEST;
-						break;
-					case ConfigUtils.GO_SOUTH_EAST:
-						mainDirection = Direction.SOUTH_EAST;
-						subDirection1 = Direction.SOUTH;
-						subDirection2 = Direction.EAST;
-						break;
-					case ConfigUtils.GO_SOUTH_WEST:
-						mainDirection = Direction.SOUTH_WEST;
-						subDirection1 = Direction.SOUTH;
-						subDirection2 = Direction.WEST;
-						break;
+			if (identifier == ConfigUtils.SCOUT_DIRECTION) {
+				switch (value) {
+				case ConfigUtils.GO_NORTH_EAST:
+					mainDirection = Direction.NORTH_EAST;
+					subDirection1 = Direction.NORTH;
+					subDirection2 = Direction.EAST;
+					break;
+				case ConfigUtils.GO_NORTH_WEST:
+					mainDirection = Direction.NORTH_WEST;
+					subDirection1 = Direction.NORTH;
+					subDirection2 = Direction.WEST;
+					break;
+				case ConfigUtils.GO_SOUTH_EAST:
+					mainDirection = Direction.SOUTH_EAST;
+					subDirection1 = Direction.SOUTH;
+					subDirection2 = Direction.EAST;
+					break;
+				case ConfigUtils.GO_SOUTH_WEST:
+					mainDirection = Direction.SOUTH_WEST;
+					subDirection1 = Direction.SOUTH;
+					subDirection2 = Direction.WEST;
+					break;
 
-					default:
-						break;
-					}
+				default:
+					break;
 				}
+			}
 
-				if (identifier == ConfigUtils.SCOUT_LOCATION) {
-					archonBarricadeLoc = ConfigUtils.decodeLocation(value);
-					goAwayPhase = true;
-				}
+			if (identifier == ConfigUtils.SCOUT_LOCATION) {
+				archonBarricadeLoc = ConfigUtils.decodeLocation(value);
+				goAwayPhase = true;
+
 			}
 		}
 	}
