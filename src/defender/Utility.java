@@ -3,6 +3,7 @@ package defender;
 import battlecode.common.*;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class Utility {
 	static int[] possibleDirections = new int[]{0, 1, -1, 2, -2, 3, -3, 4};
@@ -120,4 +121,35 @@ public class Utility {
 		return false;
 	}
 
+	/*
+	 * Checks if location of the specified robot (robot controller) is in the
+	 * corner of the map.
+	 * @param rc Robot controller used to check.
+	 * @param loc Location to check if is cornered.
+	 * @return
+	 */
+	public static boolean checkIfCornered(RobotController rc, MapLocation loc) {
+		List<Direction[]> dirToCheck = new ArrayList<>();
+
+		dirToCheck.add(new Direction[] { Direction.NORTH, Direction.EAST });
+		dirToCheck.add(new Direction[] { Direction.NORTH, Direction.WEST });
+		dirToCheck.add(new Direction[] { Direction.SOUTH, Direction.EAST });
+		dirToCheck.add(new Direction[] { Direction.SOUTH, Direction.WEST });
+
+		for (Direction[] pair : dirToCheck) {
+			MapLocation candidateLocation0 = loc.add(pair[0]);
+			MapLocation candidateLocation1 = loc.add(pair[1]);
+			
+			try {
+				if (!rc.onTheMap(candidateLocation0) && !rc.onTheMap(candidateLocation1)) {
+					return true;
+				}
+			} catch (GameActionException e) {
+				// nothing to do here
+			}
+		}
+
+		return false;
+	}
+	
 }

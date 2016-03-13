@@ -124,7 +124,7 @@ public class Guard extends BattlecodeRobot {
 		for (Signal s : signals) {
 			int[] message = s.getMessage();
 			if (message == null) {
-				System.out.println("NULL MESSAGE");
+				// System.out.println("NULL MESSAGE");
 			} else {
 				int identifier = message[0];
 				int value = message[1];
