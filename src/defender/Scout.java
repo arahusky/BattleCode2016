@@ -37,6 +37,7 @@ public class Scout extends BattlecodeRobot {
 	private Random rnd = null;
 
 	private final int STEP_LIMIT = 50;
+	private final int LOW_HEALTH = 10;
 	private int actualSteps = 0;
 
 	@Override
@@ -50,7 +51,12 @@ public class Scout extends BattlecodeRobot {
 
 			RobotInfo[] robots = rc.senseNearbyRobots();
 			try {
-				// Report zombie den
+				
+				if (rc.getHealth() <= LOW_HEALTH) {
+					broadcastLowHealth();
+				}
+				
+				
 				for (RobotInfo robot : robots) {
 					if (robot.type == RobotType.ZOMBIEDEN) {
 						broadcastLocation(robot.location, ConfigUtils.REPORTING_DEN_LOCATION);
@@ -197,6 +203,11 @@ public class Scout extends BattlecodeRobot {
 			System.out.println(ex.getMessage());
 			ex.printStackTrace();
 		}
+	}
+	
+	private void broadcastLowHealth() throws GameActionException {
+		int radius = 80 * 80;
+		rc.broadcastMessageSignal(ConfigUtils.SCOUT_LOW_HEALTH, rc.getID(), radius);
 	}
 
 	/**

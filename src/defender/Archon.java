@@ -6,8 +6,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils.Collections;
-
 import battlecode.common.*;
 
 public class Archon extends BattlecodeRobot {
@@ -40,6 +38,7 @@ public class Archon extends BattlecodeRobot {
 	private int scoutsCreated = 0;
 	private int broadcastedToScouts = 0;
 	private List<Integer> directionsForScouts = new ArrayList<>();
+	private List<Integer> scoutsWithLowHealth = new ArrayList<>();
 
 	@Override
 	public void run() {
@@ -79,6 +78,14 @@ public class Archon extends BattlecodeRobot {
 				// if there's too little guards nearby, build guard
 				if (isEnemyAhead() || getMyNearbyUnitsCount() < 5) {
 					typeToBuild = RobotType.GUARD;
+				}
+
+				if (!isEnemyAhead() && getMyNearbyUnitsCount() > 2) {
+					if (rand.nextDouble() <= 0.5) {
+						typeToBuild = RobotType.SOLDIER;
+					} else {
+						typeToBuild = RobotType.GUARD;
+					}
 				}
 
 				// Check for sufficient parts
@@ -216,7 +223,9 @@ public class Archon extends BattlecodeRobot {
 				// We have location where to go if this archon created scouts
 				// and gets results. If this archon is not creating scouts,
 				// we wait for results from another archon.
-				if ((NUMBER_OF_SCOUTS <= scoutsCreated && NUMBER_OF_SCOUTS <= broadcastedToScouts)
+				int broadcastedOrLowHealth = broadcastedToScouts + scoutsWithLowHealth.size();
+
+				if ((NUMBER_OF_SCOUTS <= scoutsCreated && NUMBER_OF_SCOUTS <= broadcastedOrLowHealth)
 						|| (!shouldCreateScouts())) {
 					if (corners.size() >= NUMBER_OF_SCOUTS) {
 						MapLocation loc = getBestCornerToGo();
@@ -240,24 +249,24 @@ public class Archon extends BattlecodeRobot {
 		MapLocation[] locs = rc.getInitialArchonLocations(rc.getTeam());
 		Arrays.sort(locs);
 		Arrays.sort(locs, new Comparator<MapLocation>() {
-		    public int compare(MapLocation o1, MapLocation o2) {
-		    	if (o1.x < o2.x) {
-		    		return -1;
-		    	}
-		    	if (o1.x > o2.x) {
-		    		return 1;
-		    	}
-		    	if (o1.y < o2.y) {
-		    		return -1;
-		    	}
-		    	if (o1.y > o2.y) {
-		    		return 1;
-		    	}
-		    	return 0;
-		    }
+			public int compare(MapLocation o1, MapLocation o2) {
+				if (o1.x < o2.x) {
+					return -1;
+				}
+				if (o1.x > o2.x) {
+					return 1;
+				}
+				if (o1.y < o2.y) {
+					return -1;
+				}
+				if (o1.y > o2.y) {
+					return 1;
+				}
+				return 0;
+			}
 		});
-		
-		MapLocation middle = locs[locs.length / 2]; 
+
+		MapLocation middle = locs[locs.length / 2];
 		if (rc.getLocation().equals(middle)) {
 			return true;
 		}
@@ -377,6 +386,12 @@ public class Archon extends BattlecodeRobot {
 				if (!opponent.contains(loc)) {
 					opponent.add(loc);
 				}
+				break;
+			case ConfigUtils.SCOUT_LOW_HEALTH:
+				if (!scoutsWithLowHealth.contains(value)) {
+					scoutsWithLowHealth.add(value);
+				}
+				break;
 			}
 		}
 	}
