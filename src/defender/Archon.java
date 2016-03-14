@@ -1,6 +1,8 @@
 package defender;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
@@ -17,8 +19,12 @@ public class Archon extends BattlecodeRobot {
 
 	private static final int NUMBER_OF_SCOUTS = 2; // For each archon
 
-	private List<MapLocation> corners = new ArrayList<>(); // Discovered corners
-	private List<MapLocation> dens = new ArrayList<>(); // Discovered dens
+	// Discovered corners
+	private List<MapLocation> corners = new ArrayList<>();
+	// Discovered dens
+	private List<MapLocation> dens = new ArrayList<>();
+	// Discovered opponent's robots. Not updating them.
+	private List<MapLocation> opponent = new ArrayList<>();
 
 	private static final MapLocation ALREADY_IN_CORNER = new MapLocation(-1, -1);
 	private static final MapLocation UNDEFINED_LOCATION = new MapLocation(-42, -42);
@@ -32,6 +38,7 @@ public class Archon extends BattlecodeRobot {
 	private int scoutsCreated = 0;
 	private int broadcastedToScouts = 0;
 	private List<Integer> directionsForScouts = new ArrayList<>();
+	private List<Integer> scoutsWithLowHealth = new ArrayList<>();
 
 	private int bestDistanceFromCorner = 10000;
 	private boolean isNearCorner = false;
@@ -75,6 +82,14 @@ public class Archon extends BattlecodeRobot {
 				// if there's too little guards nearby, build guard
 				if (isEnemyAhead() || getMyNearbyUnitsCount() < 5) {
 					typeToBuild = RobotType.GUARD;
+				}
+
+				if (!isEnemyAhead() && getMyNearbyUnitsCount() > 2) {
+					if (rand.nextDouble() <= 0.5) {
+						typeToBuild = RobotType.SOLDIER;
+					} else {
+						typeToBuild = RobotType.GUARD;
+					}
 				}
 
 				// Check for sufficient parts
@@ -130,9 +145,10 @@ public class Archon extends BattlecodeRobot {
 
 		try {
 			rc.broadcastMessageSignal(ConfigUtils.MOVE_TO_CORNER_LOCATION, ConfigUtils.encodeLocation(goToLocation), 6);
-		} catch (GameActionException e) { }
+		} catch (GameActionException e) {
+		}
 
-		while (!checkIfCornered(rc)) {
+		while (!Utility.checkIfCornered(rc, rc.getLocation())) {
 			RobotInfo[] zombieEnemies = rc.senseNearbyRobots(rc.getType().attackRadiusSquared, Team.ZOMBIE);
 			RobotInfo[] normalEnemies = rc.senseNearbyRobots(rc.getType().attackRadiusSquared, rc.getTeam().opponent());
 			RobotInfo[] opponentEnemies = Utility.joinRobotInfo(zombieEnemies, normalEnemies);
@@ -185,7 +201,7 @@ public class Archon extends BattlecodeRobot {
 	 *         (-1,-1), then we are in the corner. If
 	 */
 	private MapLocation getDestination() {
-		rand = new Random(rc.getID());
+		rand = new Random((int) Math.pow(rc.getID(), 2));
 
 		if (rc.getTeam() == Team.A) {
 			directionsForScouts.add(ConfigUtils.GO_NORTH_WEST);
@@ -196,7 +212,7 @@ public class Archon extends BattlecodeRobot {
 		}
 
 		// Check if we start at the corner
-		if (checkIfCornered(rc)) {
+		if (Utility.checkIfCornered(rc, rc.getLocation())) {
 			sendScoutsAway(rc.getLocation());
 			return ALREADY_IN_CORNER;
 		}
@@ -218,27 +234,24 @@ public class Archon extends BattlecodeRobot {
 
 			try {
 
-				if (NUMBER_OF_SCOUTS > scoutsCreated) {
+				if (NUMBER_OF_SCOUTS > scoutsCreated && shouldCreateScouts()) {
 					tryCreateUnit(RobotType.SCOUT);
 				}
 
 				// In the meantime, build guards
 				tryCreateUnit(RobotType.GUARD);
 
-				if (NUMBER_OF_SCOUTS <= scoutsCreated && NUMBER_OF_SCOUTS <= broadcastedToScouts) {
+				// We have location where to go if this archon created scouts
+				// and gets results. If this archon is not creating scouts,
+				// we wait for results from another archon.
+				int broadcastedOrLowHealth = broadcastedToScouts + scoutsWithLowHealth.size();
+
+				if ((NUMBER_OF_SCOUTS <= scoutsCreated && NUMBER_OF_SCOUTS <= broadcastedOrLowHealth)
+						|| (!shouldCreateScouts())) {
 					if (corners.size() >= NUMBER_OF_SCOUTS) {
-						int distance = 0;
-						int minDistance = Integer.MAX_VALUE;
-						int indexOfMin = 0;
-						for (int i = 0; i < corners.size(); i++) {
-							distance = rc.getLocation().distanceSquaredTo(corners.get(i));
-							if (distance < minDistance) {
-								minDistance = distance;
-								indexOfMin = i;
-							}
-						}
-						sendScoutsAway(corners.get(indexOfMin));
-						return corners.get(indexOfMin);
+						MapLocation loc = getBestCornerToGo();
+						sendScoutsAway(loc);
+						return loc;
 					}
 				}
 				Clock.yield();
@@ -247,6 +260,77 @@ public class Archon extends BattlecodeRobot {
 				e.printStackTrace();
 			}
 		}
+
+	}
+
+	/*
+	 * Determines whether the current Archon should create scouts.
+	 */
+	private boolean shouldCreateScouts() {
+		MapLocation[] locs = rc.getInitialArchonLocations(rc.getTeam());
+		Arrays.sort(locs);
+		Arrays.sort(locs, new Comparator<MapLocation>() {
+			public int compare(MapLocation o1, MapLocation o2) {
+				if (o1.x < o2.x) {
+					return -1;
+				}
+				if (o1.x > o2.x) {
+					return 1;
+				}
+				if (o1.y < o2.y) {
+					return -1;
+				}
+				if (o1.y > o2.y) {
+					return 1;
+				}
+				return 0;
+			}
+		});
+
+		MapLocation middle = locs[locs.length / 2];
+		if (rc.getLocation().equals(middle)) {
+			return true;
+		}
+		return false;
+	}
+
+	private MapLocation getBestCornerToGo() {
+		MapLocation result;
+		List<MapLocation> dangerous = new ArrayList<>();
+		dangerous.addAll(dens);
+		dangerous.addAll(opponent);
+		if (dangerous.isEmpty()) {
+			result = getMinimumDistanceFrom(corners, rc.getLocation());
+		} else {
+			int distance = 0;
+			int maxDistance = Integer.MIN_VALUE;
+			int indexOfMax = 0;
+			for (int i = 0; i < corners.size(); i++) {
+				distance = getMinimumDistanceFrom(dangerous, rc.getLocation()).distanceSquaredTo(corners.get(i));
+				if (distance > maxDistance) {
+					maxDistance = distance;
+					indexOfMax = i;
+				}
+			}
+			result = corners.get(indexOfMax);
+
+		}
+		sendScoutsAway(result);
+		return result;
+	}
+
+	private MapLocation getMinimumDistanceFrom(List<MapLocation> locs, MapLocation locationToMeasure) {
+		int distance = 0;
+		int minDistance = Integer.MAX_VALUE;
+		int indexOfMin = 0;
+		for (int i = 0; i < locs.size(); i++) {
+			distance = locationToMeasure.distanceSquaredTo(locs.get(i));
+			if (distance < minDistance) {
+				minDistance = distance;
+				indexOfMin = i;
+			}
+		}
+		return locs.get(indexOfMin);
 	}
 
 	private void tryCreateUnit(RobotType typeToBuild) throws GameActionException {
@@ -294,6 +378,12 @@ public class Archon extends BattlecodeRobot {
 		}
 
 		for (Signal s : signals) {
+
+			if (s.getTeam() != rc.getTeam()) {
+				// Broadcast from another team...
+				continue;
+			}
+
 			int[] message = s.getMessage();
 			if (message == null) {
 				return;
@@ -313,6 +403,16 @@ public class Archon extends BattlecodeRobot {
 					dens.add(loc);
 				}
 				break;
+			case ConfigUtils.REPORTING_OPPONENT:
+				if (!opponent.contains(loc)) {
+					opponent.add(loc);
+				}
+				break;
+			case ConfigUtils.SCOUT_LOW_HEALTH:
+				if (!scoutsWithLowHealth.contains(value)) {
+					scoutsWithLowHealth.add(value);
+				}
+				break;
 			}
 		}
 	}
@@ -323,7 +423,7 @@ public class Archon extends BattlecodeRobot {
 	 */
 	private void broadcastDirectionToScout(int direction) {
 		try {
-			rc.broadcastMessageSignal(ConfigUtils.SCOUT_DIRECTION, direction, 3);
+			rc.broadcastMessageSignal(ConfigUtils.SCOUT_DIRECTION, direction, 2);
 		} catch (GameActionException ex) {
 			System.out.println(ex.getMessage());
 			ex.printStackTrace();
@@ -353,34 +453,6 @@ public class Archon extends BattlecodeRobot {
 		} else {
 			broadcastLocationToScout(loc);
 		}
-	}
-
-	/*
-	 * Checks if location of the specified robot (robot controller) is in the
-	 * corner of the map.
-	 */
-	public static boolean checkIfCornered(RobotController rc) {
-		List<Direction[]> dirToCheck = new ArrayList<>();
-
-		dirToCheck.add(new Direction[] { Direction.NORTH, Direction.EAST });
-		dirToCheck.add(new Direction[] { Direction.NORTH, Direction.WEST });
-		dirToCheck.add(new Direction[] { Direction.SOUTH, Direction.EAST });
-		dirToCheck.add(new Direction[] { Direction.SOUTH, Direction.WEST });
-
-		for (Direction[] pair : dirToCheck) {
-			MapLocation candidateLocation0 = rc.getLocation().add(pair[0]);
-			MapLocation candidateLocation1 = rc.getLocation().add(pair[1]);
-
-			try {
-				if (!rc.onTheMap(candidateLocation0) && !rc.onTheMap(candidateLocation1)) {
-					return true;
-				}
-			} catch (GameActionException e) {
-				// nothing to do here
-			}
-		}
-
-		return false;
 	}
 
 }

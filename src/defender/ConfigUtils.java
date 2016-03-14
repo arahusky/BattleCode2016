@@ -14,9 +14,12 @@ public class ConfigUtils {
 
 	public static final int SCOUT_DIRECTION = -2414;
 	public static final int SCOUT_LOCATION = -5852;
+	
+	public static final int SCOUT_LOW_HEALTH = -1004; 
 
 	public static final int REPORTING_DEN_LOCATION = -3721;
 	public static final int REPORTING_CORNER_LOCATION = -440047;
+	public static final int REPORTING_OPPONENT = -2271;
 	public static final int MOVE_TO_CORNER_LOCATION = -54631;
 
 	public static final int GO_SOUTH_WEST = 14454;

@@ -36,13 +36,14 @@ public class Scout extends BattlecodeRobot {
 
 	private Random rnd = null;
 
-	private final int STEP_LIMIT = 25;
+	private final int STEP_LIMIT = 50;
+	private final int LOW_HEALTH = 10;
 	private int actualSteps = 0;
 
 	@Override
 	public void run() {
 
-		rnd = new Random(rc.getID());
+		rnd = new Random((int)Math.pow(rc.getID(), 2));
 
 		while (true) {
 
@@ -50,23 +51,30 @@ public class Scout extends BattlecodeRobot {
 
 			RobotInfo[] robots = rc.senseNearbyRobots();
 			try {
-				// Report zombie den
+				
+				if (rc.getHealth() <= LOW_HEALTH) {
+					broadcastLowHealth();
+				}
+				
+				
 				for (RobotInfo robot : robots) {
 					if (robot.type == RobotType.ZOMBIEDEN) {
-
-						if (!reportedLocations.contains(robot.location)) {
-							broadcastLocation(robot.location, ConfigUtils.REPORTING_DEN_LOCATION);
-							reportedLocations.add(robot.location);
-						}
+						broadcastLocation(robot.location, ConfigUtils.REPORTING_DEN_LOCATION);
+					}
+					if (Utility.checkIfCornered(rc, robot.location)) {
+						broadcastLocation(robot.location, ConfigUtils.REPORTING_CORNER_LOCATION);
+						goAwayPhase = true;
+					}
+					if (robot.team == rc.getTeam().opponent()) {
+						// Broadcasting location of the opponent's robot. The
+						// locations are static and we do NOT update them.
+						broadcastLocation(robot.location, ConfigUtils.REPORTING_OPPONENT);
 					}
 				}
 
-				if (Archon.checkIfCornered(rc)) {
+				if (Utility.checkIfCornered(rc, rc.getLocation())) {
 					MapLocation loc = rc.getLocation();
-					if (!reportedLocations.contains(loc)) {
-						broadcastLocation(loc, ConfigUtils.REPORTING_CORNER_LOCATION);
-						reportedLocations.add(loc);
-					}
+					broadcastLocation(loc, ConfigUtils.REPORTING_CORNER_LOCATION);
 					goAwayPhase = true;
 				}
 
@@ -85,6 +93,7 @@ public class Scout extends BattlecodeRobot {
 				e.printStackTrace();
 			}
 		}
+
 	}
 
 	private void fakeBroadcast() throws GameActionException {
@@ -174,6 +183,11 @@ public class Scout extends BattlecodeRobot {
 	 */
 	private void broadcastLocation(MapLocation loc, int broadcastType) {
 		try {
+
+			if (reportedLocations.contains(loc)) {
+				return;
+			}
+
 			MapLocation[] archonLocations = rc.getInitialArchonLocations(rc.getTeam());
 			int maxDistance = Integer.MIN_VALUE;
 			for (int i = 0; i < archonLocations.length; i++) {
@@ -184,10 +198,16 @@ public class Scout extends BattlecodeRobot {
 				}
 			}
 			rc.broadcastMessageSignal(broadcastType, ConfigUtils.encodeLocation(loc), maxDistance);
+			reportedLocations.add(loc);
 		} catch (GameActionException ex) {
 			System.out.println(ex.getMessage());
 			ex.printStackTrace();
 		}
+	}
+	
+	private void broadcastLowHealth() throws GameActionException {
+		int radius = 80 * 80;
+		rc.broadcastMessageSignal(ConfigUtils.SCOUT_LOW_HEALTH, rc.getID(), radius);
 	}
 
 	/**
@@ -198,6 +218,12 @@ public class Scout extends BattlecodeRobot {
 		Signal[] signals = rc.emptySignalQueue();
 
 		for (Signal s : signals) {
+
+			if (s.getTeam() != rc.getTeam()) {
+				// Broadcast from another team
+				continue;
+			}
+			
 			int[] message = s.getMessage();
 			if (message == null) {
 				return;
