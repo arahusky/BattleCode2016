@@ -109,14 +109,18 @@ public class Utility {
 		throw new GameActionException(GameActionExceptionType.CANT_MOVE_THERE, "Cant move");
 	}
 
-	public static boolean seeCorner(RobotController rc) throws GameActionException {
+	public static boolean seeCorner(RobotController rc) {
 		int sight = rc.getType().sensorRadiusSquared;
 		Direction[] dirsToCheck = new Direction[] { Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST };
 		int outOfMapDirections = 0;
 		for (Direction dir : dirsToCheck) {
 			MapLocation locToCheck = rc.getLocation().add(dir, (int)Math.sqrt(sight));
-			if (!rc.onTheMap(locToCheck)) {
-				outOfMapDirections++;
+			try {
+				if (!rc.onTheMap(locToCheck)) {
+					outOfMapDirections++;
+				}
+			} catch (GameActionException e) {
+				return false;
 			}
 		}
 		if (outOfMapDirections >= 2) {

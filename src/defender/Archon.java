@@ -207,12 +207,17 @@ public class Archon extends BattlecodeRobot {
 	private MapLocation getDestination() {
 		rand = new Random((int) Math.pow(rc.getID(), 2));
 
-		if (rc.getTeam() == Team.A) {
+		if (rc.getTeam() == Team.B) {
 			directionsForScouts.add(ConfigUtils.GO_NORTH_WEST);
 			directionsForScouts.add(ConfigUtils.GO_SOUTH_EAST);
+			directionsForScouts.add(ConfigUtils.GO_NORTH_EAST);
+			directionsForScouts.add(ConfigUtils.GO_SOUTH_WEST);
+			
 		} else {
 			directionsForScouts.add(ConfigUtils.GO_NORTH_EAST);
 			directionsForScouts.add(ConfigUtils.GO_SOUTH_WEST);
+			directionsForScouts.add(ConfigUtils.GO_NORTH_WEST);
+			directionsForScouts.add(ConfigUtils.GO_SOUTH_EAST);
 		}
 
 		// Check if we start at the corner
@@ -220,7 +225,7 @@ public class Archon extends BattlecodeRobot {
 			sendScoutsAway(rc.getLocation());
 			return ALREADY_IN_CORNER;
 		}
-
+		
 		while (true) {
 
 			if (rc.getRoundNum() > MAX_ROUNDS) {
@@ -228,6 +233,9 @@ public class Archon extends BattlecodeRobot {
 					result = corners.get(0);
 				} else if (!dens.isEmpty()) {
 					result = dens.get(0);
+				}
+				if (Utility.seeCorner(rc) && !rc.canSense(result)) {
+					result = rc.getLocation();
 				}
 				sendScoutsAway(result);
 				return result;
@@ -250,8 +258,12 @@ public class Archon extends BattlecodeRobot {
 					// we wait for results from another archon.
 					int broadcastedOrLowHealth = broadcastedToScouts + scoutsWithLowHealth.size();
 					if (NUMBER_OF_SCOUTS <= scoutsCreated && NUMBER_OF_SCOUTS <= broadcastedOrLowHealth) {
+						// Got all results
 						if (corners.size() >= NUMBER_OF_SCOUTS) {
 							MapLocation loc = getBestCornerToGo();
+							if (Utility.seeCorner(rc) && !rc.canSense(loc)) {
+								loc = rc.getLocation();
+							}
 							sendScoutsAway(loc);
 							broadcastResultToArchons(loc);
 							return loc;
