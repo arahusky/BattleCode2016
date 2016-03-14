@@ -26,7 +26,10 @@ public class ConfigUtils {
 	public static final int GO_SOUTH_EAST = 2960;
 	public static final int GO_NORTH_WEST = 3870;
 	public static final int GO_NORTH_EAST = 43068;
-
+	
+	public static final int MAX_BROADCAST_RADIUS = 80 * 80;
+	public static final int RESULT = 42;
+	
 	/*
 	 * Holds all used flags for broadcasting.
 	 */

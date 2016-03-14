@@ -42,7 +42,9 @@ public class Archon extends BattlecodeRobot {
 
 	private int bestDistanceFromCorner = 10000;
 	private boolean isNearCorner = false;
+	private boolean gotResultFromArchon = false;
 	private static final int SEARCH_CORNER_DISTANCE = 12;
+	private MapLocation result = UNDEFINED_LOCATION;
 
 	@Override
 	public void run() {
@@ -165,21 +167,23 @@ public class Archon extends BattlecodeRobot {
 						} else {
 							Utility.goToLocation(rc, goToLocation);
 
-							if(isNearCorner && bestDistanceFromCorner < goToLocation.distanceSquaredTo(rc.getLocation())){
-//								System.out.println("STOPPING ARCHON");
+							if (isNearCorner
+									&& bestDistanceFromCorner < goToLocation.distanceSquaredTo(rc.getLocation())) {
+								// System.out.println("STOPPING ARCHON");
 								break;
 							}
 
 							if (bestDistanceFromCorner > goToLocation.distanceSquaredTo(rc.getLocation())) {
 								bestDistanceFromCorner = goToLocation.distanceSquaredTo(rc.getLocation());
-//								System.out.println("ARCHON IN BETTER LOCA");
+								// System.out.println("ARCHON IN BETTER LOCA");
 							}
 
-							if (goToLocation.distanceSquaredTo(rc.getLocation()) < SEARCH_CORNER_DISTANCE){
+							if (goToLocation.distanceSquaredTo(rc.getLocation()) < SEARCH_CORNER_DISTANCE) {
 								isNearCorner = true;
 								bestDistanceFromCorner = goToLocation.distanceSquaredTo(rc.getLocation());
 								Utility.resetPastLocations();
-//								System.out.println("ARCHON GONE TOO FAR, GOING BACK");
+								// System.out.println("ARCHON GONE TOO FAR,
+								// GOING BACK");
 							}
 						}
 					}
@@ -220,7 +224,6 @@ public class Archon extends BattlecodeRobot {
 		while (true) {
 
 			if (rc.getRoundNum() > MAX_ROUNDS) {
-				MapLocation result = UNDEFINED_LOCATION;
 				if (!corners.isEmpty()) {
 					result = corners.get(0);
 				} else if (!dens.isEmpty()) {
@@ -234,26 +237,33 @@ public class Archon extends BattlecodeRobot {
 
 			try {
 
-				if (NUMBER_OF_SCOUTS > scoutsCreated && shouldCreateScouts()) {
+				if (NUMBER_OF_SCOUTS > scoutsCreated && isThisMainArchon()) {
 					tryCreateUnit(RobotType.SCOUT);
 				}
 
 				// In the meantime, build guards
 				tryCreateUnit(RobotType.GUARD);
 
-				// We have location where to go if this archon created scouts
-				// and gets results. If this archon is not creating scouts,
-				// we wait for results from another archon.
-				int broadcastedOrLowHealth = broadcastedToScouts + scoutsWithLowHealth.size();
+				if (isThisMainArchon()) {
+					// We have location where to go if this archon created scouts
+					// and gets results. If this archon is not creating scouts,
+					// we wait for results from another archon.
+					int broadcastedOrLowHealth = broadcastedToScouts + scoutsWithLowHealth.size();
+					if (NUMBER_OF_SCOUTS <= scoutsCreated && NUMBER_OF_SCOUTS <= broadcastedOrLowHealth) {
+						if (corners.size() >= NUMBER_OF_SCOUTS) {
+							MapLocation loc = getBestCornerToGo();
+							sendScoutsAway(loc);
+							broadcastResultToArchons(loc);
+							return loc;
+						}
+					}
 
-				if ((NUMBER_OF_SCOUTS <= scoutsCreated && NUMBER_OF_SCOUTS <= broadcastedOrLowHealth)
-						|| (!shouldCreateScouts())) {
-					if (corners.size() >= NUMBER_OF_SCOUTS) {
-						MapLocation loc = getBestCornerToGo();
-						sendScoutsAway(loc);
-						return loc;
+				} else {
+					if (gotResultFromArchon) {
+						return result;
 					}
 				}
+
 				Clock.yield();
 			} catch (Exception e) {
 				System.out.println(e.getMessage());
@@ -266,7 +276,7 @@ public class Archon extends BattlecodeRobot {
 	/*
 	 * Determines whether the current Archon should create scouts.
 	 */
-	private boolean shouldCreateScouts() {
+	private boolean isThisMainArchon() {
 		MapLocation[] locs = rc.getInitialArchonLocations(rc.getTeam());
 		Arrays.sort(locs);
 		Arrays.sort(locs, new Comparator<MapLocation>() {
@@ -292,6 +302,21 @@ public class Archon extends BattlecodeRobot {
 			return true;
 		}
 		return false;
+	}
+
+	/*
+	 * If this Archon is main archon, broadcasts a result to other Archons.
+	 */
+	private void broadcastResultToArchons(MapLocation loc) {
+		try {
+			rc.broadcastMessageSignal(
+					ConfigUtils.RESULT,
+					ConfigUtils.encodeLocation(loc),
+					ConfigUtils.MAX_BROADCAST_RADIUS);
+		} catch (GameActionException ex) {
+			System.out.println(ex.getMessage());
+			ex.printStackTrace();
+		}
 	}
 
 	private MapLocation getBestCornerToGo() {
@@ -413,6 +438,10 @@ public class Archon extends BattlecodeRobot {
 					scoutsWithLowHealth.add(value);
 				}
 				break;
+			case ConfigUtils.RESULT:
+				result = loc;
+				gotResultFromArchon = true;
+				break;
 			}
 		}
 	}
@@ -436,7 +465,7 @@ public class Archon extends BattlecodeRobot {
 	 */
 	private void broadcastLocationToScout(MapLocation loc) {
 		try {
-			int mapSizeSq = 80 * 80; // broadcasting across whole map
+			int mapSizeSq = ConfigUtils.MAX_BROADCAST_RADIUS;
 			rc.broadcastMessageSignal(ConfigUtils.SCOUT_LOCATION, ConfigUtils.encodeLocation(loc), mapSizeSq);
 		} catch (GameActionException ex) {
 			System.out.println(ex.getMessage());

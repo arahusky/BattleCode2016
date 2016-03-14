@@ -13,6 +13,7 @@ import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
 import battlecode.common.Signal;
+import battlecode.server.Config;
 
 public class Scout extends BattlecodeRobot {
 
@@ -26,7 +27,6 @@ public class Scout extends BattlecodeRobot {
 	private List<MapLocation> reportedLocations = new ArrayList<>();
 
 	private Direction mainDirection = Direction.NONE;
-
 	// Sub-directions are parts of main directions
 	private Direction subDirection1 = Direction.NONE;
 	private Direction subDirection2 = Direction.NONE;
@@ -43,7 +43,7 @@ public class Scout extends BattlecodeRobot {
 	@Override
 	public void run() {
 
-		rnd = new Random((int)Math.pow(rc.getID(), 2));
+		rnd = new Random((int) Math.pow(rc.getID(), 2));
 
 		while (true) {
 
@@ -51,12 +51,11 @@ public class Scout extends BattlecodeRobot {
 
 			RobotInfo[] robots = rc.senseNearbyRobots();
 			try {
-				
+
 				if (rc.getHealth() <= LOW_HEALTH) {
 					broadcastLowHealth();
 				}
-				
-				
+
 				for (RobotInfo robot : robots) {
 					if (robot.type == RobotType.ZOMBIEDEN) {
 						broadcastLocation(robot.location, ConfigUtils.REPORTING_DEN_LOCATION);
@@ -68,7 +67,10 @@ public class Scout extends BattlecodeRobot {
 					if (robot.team == rc.getTeam().opponent()) {
 						// Broadcasting location of the opponent's robot. The
 						// locations are static and we do NOT update them.
-						broadcastLocation(robot.location, ConfigUtils.REPORTING_OPPONENT);
+						// Reporting only Archons.
+						if (robot.type == RobotType.ARCHON) {
+							broadcastLocation(robot.location, ConfigUtils.REPORTING_OPPONENT);
+						}
 					}
 				}
 
@@ -97,7 +99,7 @@ public class Scout extends BattlecodeRobot {
 	}
 
 	private void fakeBroadcast() throws GameActionException {
-		final int distance = 80 * 80;
+		final int distance = ConfigUtils.MAX_BROADCAST_RADIUS;
 		int flag = rnd.nextInt();
 		int value = rnd.nextInt();
 		if (ConfigUtils.USED_CONSTANTS.contains(flag)) {
@@ -140,6 +142,8 @@ public class Scout extends BattlecodeRobot {
 
 	private void goToCorner() throws GameActionException {
 		if (rc.isCoreReady()) {
+			Utility.forwardish(rc, mainDirection);
+			/*
 			if (tryToGoToDirection(mainDirection)) {
 				return;
 			}
@@ -160,6 +164,7 @@ public class Scout extends BattlecodeRobot {
 					}
 				}
 			}
+			*/
 		}
 	}
 
@@ -170,6 +175,7 @@ public class Scout extends BattlecodeRobot {
 	 *            Direction to go.
 	 * @return True if the move was successful.
 	 */
+	/*
 	private boolean tryToGoToDirection(Direction dir) throws GameActionException {
 		if (rc.canMove(dir)) {
 			rc.move(dir);
@@ -177,7 +183,7 @@ public class Scout extends BattlecodeRobot {
 		}
 		return false;
 	}
-
+	*/
 	/*
 	 * Broadcast the specified location.
 	 */
@@ -188,25 +194,25 @@ public class Scout extends BattlecodeRobot {
 				return;
 			}
 
-			MapLocation[] archonLocations = rc.getInitialArchonLocations(rc.getTeam());
-			int maxDistance = Integer.MIN_VALUE;
-			for (int i = 0; i < archonLocations.length; i++) {
-				// Compute the distance between archon and the current scout.
-				int distance = archonLocations[i].distanceSquaredTo(rc.getLocation());
-				if (distance > maxDistance) {
-					maxDistance = distance;
-				}
-			}
-			rc.broadcastMessageSignal(broadcastType, ConfigUtils.encodeLocation(loc), maxDistance);
+			/**
+			 * MapLocation[] archonLocations =
+			 * rc.getInitialArchonLocations(rc.getTeam()); int maxDistance =
+			 * Integer.MIN_VALUE; for (int i = 0; i < archonLocations.length;
+			 * i++) { // Compute the distance between archon and the current
+			 * scout. int distance =
+			 * archonLocations[i].distanceSquaredTo(rc.getLocation()); if
+			 * (distance > maxDistance) { maxDistance = distance; } } /
+			 **/
+			rc.broadcastMessageSignal(broadcastType, ConfigUtils.encodeLocation(loc), ConfigUtils.MAX_BROADCAST_RADIUS);
 			reportedLocations.add(loc);
 		} catch (GameActionException ex) {
 			System.out.println(ex.getMessage());
 			ex.printStackTrace();
 		}
 	}
-	
+
 	private void broadcastLowHealth() throws GameActionException {
-		int radius = 80 * 80;
+		int radius = ConfigUtils.MAX_BROADCAST_RADIUS;
 		rc.broadcastMessageSignal(ConfigUtils.SCOUT_LOW_HEALTH, rc.getID(), radius);
 	}
 
@@ -223,7 +229,7 @@ public class Scout extends BattlecodeRobot {
 				// Broadcast from another team
 				continue;
 			}
-			
+
 			int[] message = s.getMessage();
 			if (message == null) {
 				return;
