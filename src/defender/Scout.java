@@ -17,7 +17,7 @@ import battlecode.common.Signal;
 public class Scout extends BattlecodeRobot {
 
 	public Scout(RobotController rc) {
-		this.rc = rc;
+		super(rc);
 	}
 
 	private Direction[] directions = { Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST,

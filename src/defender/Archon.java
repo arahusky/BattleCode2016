@@ -11,7 +11,7 @@ import battlecode.common.*;
 public class Archon extends BattlecodeRobot {
 
 	public Archon(RobotController rc) {
-		this.rc = rc;
+		super(rc);
 	}
 
 	Direction[] directions = { Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST,

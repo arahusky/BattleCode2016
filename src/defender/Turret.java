@@ -8,7 +8,7 @@ import battlecode.common.Team;
 public class Turret extends BattlecodeRobot {
 
 	public Turret(RobotController rc) {
-		this.rc = rc;
+		super(rc);
 	}
 
 	@Override
