@@ -33,6 +33,10 @@ public class Archon extends BattlecodeRobot {
 	private int broadcastedToScouts = 0;
 	private List<Integer> directionsForScouts = new ArrayList<>();
 
+	private int bestDistanceFromCorner = 10000;
+	private boolean isNearCorner = false;
+	private static final int SEARCH_CORNER_DISTANCE = 12;
+
 	@Override
 	public void run() {
 
@@ -144,6 +148,23 @@ public class Archon extends BattlecodeRobot {
 							Utility.forwardish(rc, movingDirection);
 						} else {
 							Utility.goToLocation(rc, goToLocation);
+
+							if(isNearCorner && bestDistanceFromCorner < goToLocation.distanceSquaredTo(rc.getLocation())){
+//								System.out.println("STOPPING ARCHON");
+								break;
+							}
+
+							if (bestDistanceFromCorner > goToLocation.distanceSquaredTo(rc.getLocation())) {
+								bestDistanceFromCorner = goToLocation.distanceSquaredTo(rc.getLocation());
+//								System.out.println("ARCHON IN BETTER LOCA");
+							}
+
+							if (goToLocation.distanceSquaredTo(rc.getLocation()) < SEARCH_CORNER_DISTANCE){
+								isNearCorner = true;
+								bestDistanceFromCorner = goToLocation.distanceSquaredTo(rc.getLocation());
+								Utility.resetPastLocations();
+//								System.out.println("ARCHON GONE TOO FAR, GOING BACK");
+							}
 						}
 					}
 				}

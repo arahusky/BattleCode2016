@@ -9,6 +9,10 @@ public class Utility {
 	static ArrayList<MapLocation> pastLocations = new ArrayList<MapLocation>();
 	static boolean patient = true;
 
+	public static void resetPastLocations() {
+		pastLocations.clear();
+	}
+
 	public static void forwardish(RobotController rc, Direction ahead) throws GameActionException {
 		for (int i : possibleDirections) {
 			Direction canidateDirection = Direction.values()[(ahead.ordinal() + i + 8) % 8];
