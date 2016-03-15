@@ -44,6 +44,7 @@ public class Archon extends BattlecodeRobot {
 	private boolean isNearCorner = false;
 	private boolean gotResultFromArchon = false;
 	private static final int SEARCH_CORNER_DISTANCE = 12;
+	private static final int GOING_AWAY_FROM_CORNER = 25;
 	private MapLocation result = UNDEFINED_LOCATION;
 
 	@Override
@@ -171,6 +172,11 @@ public class Archon extends BattlecodeRobot {
 									&& bestDistanceFromCorner < goToLocation.distanceSquaredTo(rc.getLocation())) {
 								// System.out.println("STOPPING ARCHON");
 								break;
+							}
+
+							if(!isNearCorner && (goToLocation.distanceSquaredTo(rc.getLocation()) - bestDistanceFromCorner > GOING_AWAY_FROM_CORNER)) {
+								break;
+								// GOING TOO FAR
 							}
 
 							if (bestDistanceFromCorner > goToLocation.distanceSquaredTo(rc.getLocation())) {
