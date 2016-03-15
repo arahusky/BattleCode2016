@@ -26,7 +26,6 @@ public class Archon extends BattlecodeRobot {
 	// Discovered opponent's robots. Not updating them.
 	private List<MapLocation> opponent = new ArrayList<>();
 
-	private static final MapLocation ALREADY_IN_CORNER = new MapLocation(-1, -1);
 	private static final MapLocation UNDEFINED_LOCATION = new MapLocation(-42, -42);
 
 	/*
@@ -218,7 +217,6 @@ public class Archon extends BattlecodeRobot {
 			directionsForScouts.add(ConfigUtils.GO_SOUTH_EAST);
 			directionsForScouts.add(ConfigUtils.GO_NORTH_EAST);
 			directionsForScouts.add(ConfigUtils.GO_SOUTH_WEST);
-
 		} else {
 			directionsForScouts.add(ConfigUtils.GO_NORTH_EAST);
 			directionsForScouts.add(ConfigUtils.GO_SOUTH_WEST);
@@ -226,41 +224,36 @@ public class Archon extends BattlecodeRobot {
 			directionsForScouts.add(ConfigUtils.GO_SOUTH_EAST);
 		}
 
-		// Check if we start at the corner
-		if (Utility.checkIfCornered(rc, rc.getLocation())) {
-			sendScoutsAway(rc.getLocation());
-			return ALREADY_IN_CORNER;
-		}
-
 		while (true) {
-
-			if (rc.getRoundNum() > MAX_ROUNDS) {
-				if (!corners.isEmpty()) {
-					result = corners.get(0);
-				} else if (!dens.isEmpty()) {
-					result = dens.get(0);
-				}
-				if (Utility.seeCorner(rc) && !rc.canSense(result)) {
-					result = rc.getLocation();
-				}
-				sendScoutsAway(result);
-				return result;
-			}
-
-			handleMessages();
-
 			try {
+
+				if (Utility.seeCorner(rc) && !gotResultFromArchon) {
+					result = Utility.getNearCorner(rc);
+					sendScoutsAway(result);
+					broadcastResultToArchons(result);
+					return result;
+				}
+
+				if (rc.getRoundNum() > MAX_ROUNDS) {
+					if (!corners.isEmpty()) {
+						result = corners.get(0);
+					} else if (!dens.isEmpty()) {
+						result = dens.get(0);
+					}
+					if (Utility.seeCorner(rc) && !rc.canSense(result)) {
+						result = rc.getLocation();
+					}
+					sendScoutsAway(result);
+					return result;
+				}
+
+				handleMessages();
 
 				if (NUMBER_OF_SCOUTS > scoutsCreated && isThisMainArchon()) {
 					tryCreateUnit(RobotType.SCOUT);
 				}
 
-				// In the meantime, build guards
-				if (Utility.seeCorner(rc) && isThisMainArchon()) {
-					tryCreateUnit(RobotType.TURRET);
-				} else {
-					tryCreateUnit(RobotType.GUARD);
-				}
+				tryCreateUnit(RobotType.GUARD);
 
 				if (isThisMainArchon()) {
 					// We have location where to go if this archon created
@@ -280,11 +273,10 @@ public class Archon extends BattlecodeRobot {
 							return loc;
 						}
 					}
+				}
 
-				} else {
-					if (gotResultFromArchon) {
-						return result;
-					}
+				if (gotResultFromArchon) {
+					return result;
 				}
 
 				Clock.yield();

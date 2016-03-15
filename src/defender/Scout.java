@@ -52,10 +52,6 @@ public class Scout extends BattlecodeRobot {
 			RobotInfo[] robots = rc.senseNearbyRobots();
 			try {
 
-				if (rc.getHealth() <= LOW_HEALTH) {
-					broadcastLowHealth();
-				}
-
 				for (RobotInfo robot : robots) {
 					if (robot.type == RobotType.ZOMBIEDEN) {
 						broadcastLocation(robot.location, ConfigUtils.REPORTING_DEN_LOCATION);
@@ -74,12 +70,22 @@ public class Scout extends BattlecodeRobot {
 					}
 				}
 
+				if (rc.getHealth() <= LOW_HEALTH) {
+					broadcastLowHealth();
+				}
+				
 				if (Utility.checkIfCornered(rc, rc.getLocation())) {
 					MapLocation loc = rc.getLocation();
 					broadcastLocation(loc, ConfigUtils.REPORTING_CORNER_LOCATION);
 					goAwayPhase = true;
 				}
 
+				if (Utility.seeCorner(rc)) {
+					MapLocation loc = Utility.getNearCorner(rc);
+					broadcastLocation(loc, ConfigUtils.REPORTING_CORNER_LOCATION);
+					goAwayPhase = true;
+				}				
+				
 				if (goAwayPhase) {
 					goAway();
 					if (actualSteps >= STEP_LIMIT) {

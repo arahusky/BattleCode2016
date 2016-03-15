@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Utility {
-	static int[] possibleDirections = new int[]{0, 1, -1, 2, -2, 3, -3, 4};
+	static int[] possibleDirections = new int[] { 0, 1, -1, 2, -2, 3, -3, 4 };
 	static ArrayList<MapLocation> pastLocations = new ArrayList<MapLocation>();
 	static boolean patient = true;
 
@@ -114,7 +114,7 @@ public class Utility {
 		Direction[] dirsToCheck = new Direction[] { Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST };
 		int outOfMapDirections = 0;
 		for (Direction dir : dirsToCheck) {
-			MapLocation locToCheck = rc.getLocation().add(dir, (int)Math.sqrt(sight));
+			MapLocation locToCheck = rc.getLocation().add(dir, (int) Math.sqrt(sight));
 			try {
 				if (!rc.onTheMap(locToCheck)) {
 					outOfMapDirections++;
@@ -130,10 +130,32 @@ public class Utility {
 	}
 
 	/*
+	 * Computes corner that the current robot can see.
+	 */
+	public static MapLocation getNearCorner(RobotController rc) throws GameActionException {
+		Direction[] directions = { Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST,
+				Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST };
+		int range = (int) Math.sqrt(rc.getType().sensorRadiusSquared);
+
+		for (Direction dir : directions) {
+			for (int iter = 0; iter < range; iter++) {
+				MapLocation locToCheck = rc.getLocation().add(dir, iter);
+				if (checkIfCornered(rc, locToCheck)) {
+					return locToCheck;
+				}
+			}
+		}
+		throw new GameActionException(GameActionExceptionType.CANT_SENSE_THAT, "Can't sense corner");
+	}
+
+	/*
 	 * Checks if location of the specified robot (robot controller) is in the
 	 * corner of the map.
+	 * 
 	 * @param rc Robot controller used to check.
+	 * 
 	 * @param loc Location to check if is cornered.
+	 * 
 	 * @return
 	 */
 	public static boolean checkIfCornered(RobotController rc, MapLocation loc) {
@@ -147,7 +169,7 @@ public class Utility {
 		for (Direction[] pair : dirToCheck) {
 			MapLocation candidateLocation0 = loc.add(pair[0]);
 			MapLocation candidateLocation1 = loc.add(pair[1]);
-			
+
 			try {
 				if (!rc.onTheMap(candidateLocation0) && !rc.onTheMap(candidateLocation1)) {
 					return true;
@@ -159,5 +181,5 @@ public class Utility {
 
 		return false;
 	}
-	
+
 }
