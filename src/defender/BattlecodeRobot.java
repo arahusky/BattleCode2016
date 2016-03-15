@@ -16,7 +16,7 @@ public abstract class BattlecodeRobot {
 	RobotController rc;
 	Team myTeam;
 	Team opponentTeam;
-	
+
 	public BattlecodeRobot(RobotController rc) {
 		this.rc = rc;
 		myTeam = rc.getTeam();
@@ -29,8 +29,7 @@ public abstract class BattlecodeRobot {
 	 * returns, the robot dies.
 	 */
 	public abstract void run();
-	
-	
+
 	public void defend() {
 		try {
 			RobotInfo[] nearbyZombies = rc.senseNearbyRobots(rc.getType().sensorRadiusSquared, Team.ZOMBIE);
@@ -56,9 +55,9 @@ public abstract class BattlecodeRobot {
 					// try to move toward them
 					MapLocation goal = null;
 					if (nearbyZombies.length > 0) {
-						goal = nearbyZombies[0].location;
+						goal = getZombieToKill(nearbyZombies);
 					} else if (nearbyOpponent.length > 0) {
-						goal = nearbyOpponent[0].location;
+						goal = getOpponentUnitToKill(nearbyOpponent);
 					}
 
 					Direction toEnemy = rc.getLocation().directionTo(goal);
@@ -80,7 +79,56 @@ public abstract class BattlecodeRobot {
 			// nothing to do here
 		}
 	}
-	
+
+	/**
+	 * 
+	 */
+	private MapLocation getZombieToKill(RobotInfo[] zombies) {
+		return zombies[0].location;
+		
+		
+		/*List<RobotInfo> bigZombies = new ArrayList<>();
+		List<RobotInfo> smallZombies = new ArrayList<>();
+
+		for (RobotInfo zombie : zombies) {
+			switch (zombie.type) {
+			case BIGZOMBIE:
+				bigZombies.add(zombie);
+				break;
+			default:
+				smallZombies.add(zombie);
+				break;
+			}
+		}
+
+		final Comparator<RobotInfo> healthComparator = (p1, p2) -> Double.compare(p1.health, p2.health);
+		if (bigZombies.size() > 0) {
+			RobotInfo min = bigZombies.stream().min(healthComparator).get();
+			return min.location;
+		}
+
+		RobotInfo min = smallZombies.stream().min(healthComparator).get();
+		return min.location;*/
+	}
+
+	/**
+	 * 
+	 */
+	private MapLocation getOpponentUnitToKill(RobotInfo[] enemies) {
+		RobotInfo weakest = enemies[0];
+		double minHealth = Double.MAX_VALUE;
+
+		// we select unit with lowest health
+		for (RobotInfo enemy : enemies) {
+			if (enemy.health < minHealth) {
+				weakest = enemy;
+				minHealth = enemy.health;
+			}
+		}
+
+		return weakest.location;
+	}
+
 	/**
 	 * Checks, whether any of the specified enemies can be attacked. The first
 	 * one that can be attacked is returned. If no such exists, null is
