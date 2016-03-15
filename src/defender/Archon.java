@@ -145,7 +145,7 @@ public class Archon extends BattlecodeRobot {
 		}
 
 		try {
-			rc.broadcastMessageSignal(ConfigUtils.MOVE_TO_CORNER_LOCATION, ConfigUtils.encodeLocation(goToLocation), 6);
+			rc.broadcastMessageSignal(ConfigUtils.MOVE_TO_CORNER_LOCATION, ConfigUtils.encodeLocation(goToLocation), 16);
 		} catch (GameActionException e) {
 		}
 
