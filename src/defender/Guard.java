@@ -69,6 +69,11 @@ public class Guard extends BattlecodeRobot {
 		}
 
 		for (Signal s : signals) {
+			if (s.getTeam() != rc.getTeam()) {
+				// Broadcast from another team...
+				continue;
+			}
+
 			int[] message = s.getMessage();
 			if (message == null) {
 				// System.out.println("NULL MESSAGE");
