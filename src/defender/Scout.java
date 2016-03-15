@@ -68,9 +68,9 @@ public class Scout extends BattlecodeRobot {
 						// Broadcasting location of the opponent's robot. The
 						// locations are static and we do NOT update them.
 						// Reporting only Archons.
-						//if (robot.type == RobotType.ARCHON) {
+						if (robot.type == RobotType.ARCHON) {
 							broadcastLocation(robot.location, ConfigUtils.REPORTING_OPPONENT);
-						//}
+						}
 					}
 				}
 

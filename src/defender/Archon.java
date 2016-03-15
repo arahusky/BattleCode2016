@@ -212,7 +212,7 @@ public class Archon extends BattlecodeRobot {
 			directionsForScouts.add(ConfigUtils.GO_SOUTH_EAST);
 			directionsForScouts.add(ConfigUtils.GO_NORTH_EAST);
 			directionsForScouts.add(ConfigUtils.GO_SOUTH_WEST);
-			
+
 		} else {
 			directionsForScouts.add(ConfigUtils.GO_NORTH_EAST);
 			directionsForScouts.add(ConfigUtils.GO_SOUTH_WEST);
@@ -225,7 +225,7 @@ public class Archon extends BattlecodeRobot {
 			sendScoutsAway(rc.getLocation());
 			return ALREADY_IN_CORNER;
 		}
-		
+
 		while (true) {
 
 			if (rc.getRoundNum() > MAX_ROUNDS) {
@@ -250,10 +250,15 @@ public class Archon extends BattlecodeRobot {
 				}
 
 				// In the meantime, build guards
-				tryCreateUnit(RobotType.GUARD);
+				if (Utility.seeCorner(rc) && isThisMainArchon()) {
+					tryCreateUnit(RobotType.TURRET);
+				} else {
+					tryCreateUnit(RobotType.GUARD);
+				}
 
 				if (isThisMainArchon()) {
-					// We have location where to go if this archon created scouts
+					// We have location where to go if this archon created
+					// scouts
 					// and gets results. If this archon is not creating scouts,
 					// we wait for results from another archon.
 					int broadcastedOrLowHealth = broadcastedToScouts + scoutsWithLowHealth.size();
@@ -321,9 +326,7 @@ public class Archon extends BattlecodeRobot {
 	 */
 	private void broadcastResultToArchons(MapLocation loc) {
 		try {
-			rc.broadcastMessageSignal(
-					ConfigUtils.RESULT,
-					ConfigUtils.encodeLocation(loc),
+			rc.broadcastMessageSignal(ConfigUtils.RESULT, ConfigUtils.encodeLocation(loc),
 					ConfigUtils.MAX_BROADCAST_RADIUS);
 		} catch (GameActionException ex) {
 			System.out.println(ex.getMessage());
