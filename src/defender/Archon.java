@@ -26,7 +26,6 @@ public class Archon extends BattlecodeRobot {
 	// Discovered opponent's robots. Not updating them.
 	private List<MapLocation> opponent = new ArrayList<>();
 
-	private static final MapLocation UNDEFINED_LOCATION = new MapLocation(-42, -42);
 
 	/*
 	 * Maximum number of rounds (=time) for finding the location where to go.
@@ -44,7 +43,7 @@ public class Archon extends BattlecodeRobot {
 	private boolean gotResultFromArchon = false;
 	private static final int SEARCH_CORNER_DISTANCE = 12;
 	private static final int GOING_AWAY_FROM_CORNER = 25;
-	private MapLocation result = UNDEFINED_LOCATION;
+	private MapLocation result = ConfigUtils.UNDEFINED_LOCATION;
 
 	@Override
 	public void run() {
@@ -490,7 +489,7 @@ public class Archon extends BattlecodeRobot {
 	 * Send a message to scouts to go far away from the specified location.
 	 */
 	private void sendScoutsAway(MapLocation loc) {
-		if (loc == UNDEFINED_LOCATION) {
+		if (loc == ConfigUtils.UNDEFINED_LOCATION) {
 			broadcastLocationToScout(rc.getLocation());
 		} else {
 			broadcastLocationToScout(loc);

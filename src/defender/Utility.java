@@ -3,6 +3,7 @@ package defender;
 import battlecode.common.*;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public class Utility {
@@ -131,21 +132,36 @@ public class Utility {
 
 	/*
 	 * Computes corner that the current robot can see.
+	 * Returns UNDEFINED_LOCATION when any of corners can't be sensed. 
 	 */
 	public static MapLocation getNearCorner(RobotController rc) throws GameActionException {
-		Direction[] directions = { Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST,
-				Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST };
+
+		for (MapLocation locToCheck : getVisibleLocs(rc)) {
+			if (checkIfCornered(rc, locToCheck) && rc.onTheMap(locToCheck)) {
+				return locToCheck;
+			}
+		}
+		
+		return ConfigUtils.UNDEFINED_LOCATION;
+
+	}
+
+	private static List<MapLocation> getVisibleLocs(RobotController rc) {
 		int range = (int) Math.sqrt(rc.getType().sensorRadiusSquared);
 
-		for (Direction dir : directions) {
-			for (int iter = 0; iter < range; iter++) {
-				MapLocation locToCheck = rc.getLocation().add(dir, iter);
-				if (checkIfCornered(rc, locToCheck)) {
-					return locToCheck;
+		// Bounds of the rectangle
+		MapLocation topLeft = rc.getLocation().add(Direction.NORTH_WEST, range);
+		MapLocation bottomRight = rc.getLocation().add(Direction.SOUTH_EAST, range);
+		List<MapLocation> result = new ArrayList<>();
+		for (int x = topLeft.x; x <= bottomRight.x; x++) {
+			for (int y = topLeft.y; y <= bottomRight.y; y++) {
+				MapLocation loc = new MapLocation(x, y);
+				if (rc.canSense(loc)) {
+					result.add(loc);
 				}
 			}
 		}
-		throw new GameActionException(GameActionExceptionType.CANT_SENSE_THAT, "Can't sense corner");
+		return result;
 	}
 
 	/*

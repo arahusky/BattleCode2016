@@ -73,7 +73,7 @@ public class Scout extends BattlecodeRobot {
 				if (rc.getHealth() <= LOW_HEALTH) {
 					broadcastLowHealth();
 				}
-				
+
 				if (Utility.checkIfCornered(rc, rc.getLocation())) {
 					MapLocation loc = rc.getLocation();
 					broadcastLocation(loc, ConfigUtils.REPORTING_CORNER_LOCATION);
@@ -82,10 +82,12 @@ public class Scout extends BattlecodeRobot {
 
 				if (Utility.seeCorner(rc)) {
 					MapLocation loc = Utility.getNearCorner(rc);
-					broadcastLocation(loc, ConfigUtils.REPORTING_CORNER_LOCATION);
-					goAwayPhase = true;
-				}				
-				
+					if (loc != ConfigUtils.UNDEFINED_LOCATION) {
+						broadcastLocation(loc, ConfigUtils.REPORTING_CORNER_LOCATION);
+						goAwayPhase = true;
+					}
+				}
+
 				if (goAwayPhase) {
 					goAway();
 					if (actualSteps >= STEP_LIMIT) {
@@ -150,27 +152,14 @@ public class Scout extends BattlecodeRobot {
 		if (rc.isCoreReady()) {
 			Utility.forwardish(rc, mainDirection);
 			/*
-			if (tryToGoToDirection(mainDirection)) {
-				return;
-			}
-			if (tryToGoToDirection(subDirection1)) {
-				return;
-			}
-			if (tryToGoToDirection(subDirection2)) {
-				return;
-			}
-			for (Direction dir : directions) {
-				if (tryToGoToDirection(dir)) {
-					break;
-				} else {
-					MapLocation loc = rc.getLocation().add(dir);
-					if (rc.senseRubble(loc) > GameConstants.RUBBLE_OBSTRUCTION_THRESH) {
-						rc.clearRubble(dir);
-						break;
-					}
-				}
-			}
-			*/
+			 * if (tryToGoToDirection(mainDirection)) { return; } if
+			 * (tryToGoToDirection(subDirection1)) { return; } if
+			 * (tryToGoToDirection(subDirection2)) { return; } for (Direction
+			 * dir : directions) { if (tryToGoToDirection(dir)) { break; } else
+			 * { MapLocation loc = rc.getLocation().add(dir); if
+			 * (rc.senseRubble(loc) > GameConstants.RUBBLE_OBSTRUCTION_THRESH) {
+			 * rc.clearRubble(dir); break; } } }
+			 */
 		}
 	}
 
@@ -182,14 +171,10 @@ public class Scout extends BattlecodeRobot {
 	 * @return True if the move was successful.
 	 */
 	/*
-	private boolean tryToGoToDirection(Direction dir) throws GameActionException {
-		if (rc.canMove(dir)) {
-			rc.move(dir);
-			return true;
-		}
-		return false;
-	}
-	*/
+	 * private boolean tryToGoToDirection(Direction dir) throws
+	 * GameActionException { if (rc.canMove(dir)) { rc.move(dir); return true; }
+	 * return false; }
+	 */
 	/*
 	 * Broadcast the specified location.
 	 */

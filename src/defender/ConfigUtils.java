@@ -30,6 +30,8 @@ public class ConfigUtils {
 	public static final int MAX_BROADCAST_RADIUS = 80 * 80;
 	public static final int RESULT = 42;
 	
+	public static final MapLocation UNDEFINED_LOCATION = new MapLocation(-42, -42);
+	
 	/*
 	 * Holds all used flags for broadcasting.
 	 */
