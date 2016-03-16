@@ -86,7 +86,9 @@ public class Archon extends BattlecodeRobot {
 				}
 
 				if (!isEnemyAhead() && getMyNearbyUnitsCount() > 2) {
-					if (rand.nextDouble() <= 0.5) {
+					if (possibleDirectionsToBuild > 1 && rc.hasBuildRequirements(RobotType.TURRET)) {
+						typeToBuild = RobotType.TURRET;
+					} else if (rand.nextDouble() <= 0.5) {
 						typeToBuild = RobotType.SOLDIER;
 					} else {
 						typeToBuild = RobotType.GUARD;
