@@ -26,7 +26,6 @@ public class Archon extends BattlecodeRobot {
 	// Discovered opponent's robots. Not updating them.
 	private List<MapLocation> opponent = new ArrayList<>();
 
-
 	/*
 	 * Maximum number of rounds (=time) for finding the location where to go.
 	 */
@@ -147,7 +146,8 @@ public class Archon extends BattlecodeRobot {
 		}
 
 		try {
-			rc.broadcastMessageSignal(ConfigUtils.MOVE_TO_CORNER_LOCATION, ConfigUtils.encodeLocation(goToLocation), 16);
+			rc.broadcastMessageSignal(ConfigUtils.MOVE_TO_CORNER_LOCATION, ConfigUtils.encodeLocation(goToLocation),
+					16);
 		} catch (GameActionException e) {
 		}
 
@@ -174,7 +174,8 @@ public class Archon extends BattlecodeRobot {
 								break;
 							}
 
-							if(!isNearCorner && (goToLocation.distanceSquaredTo(rc.getLocation()) - bestDistanceFromCorner > GOING_AWAY_FROM_CORNER)) {
+							if (!isNearCorner && (goToLocation.distanceSquaredTo(rc.getLocation())
+									- bestDistanceFromCorner > GOING_AWAY_FROM_CORNER)) {
 								break;
 								// GOING TOO FAR
 							}
@@ -250,11 +251,22 @@ public class Archon extends BattlecodeRobot {
 
 				handleMessages();
 
+				if (scoutsCreated > 0 && !directionsForScouts.isEmpty() && isThisMainArchon()
+						&& rc.isCoreReady()) {
+					broadcastDirectionToScout(directionsForScouts.remove(0));
+					broadcastedToScouts++;
+				}
+
 				if (NUMBER_OF_SCOUTS > scoutsCreated && isThisMainArchon()) {
 					tryCreateUnit(RobotType.SCOUT);
 				}
 
-				tryCreateUnit(RobotType.GUARD);
+				final double percentageOfGuard = 0.85;
+				if (rand.nextDouble() < percentageOfGuard) {
+					tryCreateUnit(RobotType.GUARD);
+				} else {
+					tryCreateUnit(RobotType.SOLDIER);
+				}
 
 				if (isThisMainArchon()) {
 					// We have location where to go if this archon created
@@ -265,7 +277,8 @@ public class Archon extends BattlecodeRobot {
 					if (NUMBER_OF_SCOUTS <= scoutsCreated && NUMBER_OF_SCOUTS <= broadcastedOrLowHealth) {
 						// Got all results
 						if (corners.size() >= NUMBER_OF_SCOUTS) {
-							MapLocation loc = getBestCornerToGo();
+							// MapLocation loc = getBestCornerToGo();
+							MapLocation loc = getMinimumDistanceFrom(corners, rc.getLocation());
 							if (Utility.seeCorner(rc) && !rc.canSense(loc)) {
 								loc = rc.getLocation();
 							}
@@ -333,30 +346,20 @@ public class Archon extends BattlecodeRobot {
 		}
 	}
 
-	private MapLocation getBestCornerToGo() {
-		MapLocation result;
-		List<MapLocation> dangerous = new ArrayList<>();
-		dangerous.addAll(dens);
-		dangerous.addAll(opponent);
-		if (dangerous.isEmpty()) {
-			result = getMinimumDistanceFrom(corners, rc.getLocation());
-		} else {
-			int distance = 0;
-			int maxDistance = Integer.MIN_VALUE;
-			int indexOfMax = 0;
-			for (int i = 0; i < corners.size(); i++) {
-				distance = getMinimumDistanceFrom(dangerous, rc.getLocation()).distanceSquaredTo(corners.get(i));
-				if (distance > maxDistance) {
-					maxDistance = distance;
-					indexOfMax = i;
-				}
-			}
-			result = corners.get(indexOfMax);
-
-		}
-		sendScoutsAway(result);
-		return result;
-	}
+	/*
+	 * private MapLocation getBestCornerToGo() { MapLocation result;
+	 * List<MapLocation> dangerous = new ArrayList<>(); dangerous.addAll(dens);
+	 * dangerous.addAll(opponent); if (dangerous.isEmpty()) { result =
+	 * getMinimumDistanceFrom(corners, rc.getLocation()); } else { int distance
+	 * = 0; int maxDistance = Integer.MIN_VALUE; int indexOfMax = 0; for (int i
+	 * = 0; i < corners.size(); i++) { distance =
+	 * getMinimumDistanceFrom(dangerous,
+	 * rc.getLocation()).distanceSquaredTo(corners.get(i)); if (distance >
+	 * maxDistance) { maxDistance = distance; indexOfMax = i; } } result =
+	 * corners.get(indexOfMax);
+	 * 
+	 * } sendScoutsAway(result); return result; }
+	 */
 
 	private MapLocation getMinimumDistanceFrom(List<MapLocation> locs, MapLocation locationToMeasure) {
 		int distance = 0;
@@ -382,11 +385,6 @@ public class Archon extends BattlecodeRobot {
 
 				// If possible, build in this direction
 				if (rc.canBuild(dirToBuild, typeToBuild)) {
-
-					if (scoutsCreated > 0 && !directionsForScouts.isEmpty()) {
-						broadcastDirectionToScout(directionsForScouts.remove(0));
-						broadcastedToScouts++;
-					}
 
 					rc.build(dirToBuild, typeToBuild);
 					if (typeToBuild == RobotType.SCOUT) {

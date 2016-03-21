@@ -7,13 +7,11 @@ import java.util.Random;
 import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
-import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
 import battlecode.common.Signal;
-import battlecode.server.Config;
 
 public class Scout extends BattlecodeRobot {
 
